@@ -44,7 +44,7 @@ const ActiveAlarm = () => {
         </Select>
       </div>
 
-      <div className=" bg-white border rounded-md text-sm   ">
+      <div className=" bg-white dark:bg-muted border rounded-md text-sm   ">
         <div className=" border-b grid grid-cols-8 gap-2 last:border-b-0">
           <div className=" border-r pl-2 py-2">Device Name</div>
           <div className="border-r py-2">Trigger Name</div>
