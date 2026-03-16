@@ -1,11 +1,9 @@
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
+import { AlertCircle, AlertTriangle, Filter, MapPin, OctagonAlert } from "lucide-react";
 
 const fakeAlarm = [
   {
@@ -28,25 +26,118 @@ const fakeAlarm = [
   },
 ];
 
+const alarmSummary = [
+  {
+    id: "major",
+    label: "Major",
+    value: 0,
+    icon: AlertTriangle,
+    iconBg: "bg-yellow-100",
+    iconColor: "text-yellow-600",
+  },
+  {
+    id: "minor",
+    label: "Minor",
+    value: 0,
+    icon: AlertCircle,
+    iconBg: "bg-blue-100",
+    iconColor: "text-blue-600",
+  },
+  {
+    id: "critical",
+    label: "Critical",
+    value: 0,
+    icon: OctagonAlert,
+    iconBg: "bg-red-100",
+    iconColor: "text-red-600",
+  },
+  {
+    id: "critical-site",
+    label: "Critical Site",
+    value: 0,
+    icon: MapPin,
+    iconBg: "bg-purple-100",
+    iconColor: "text-purple-600",
+  },
+];
+
 const ActiveAlarm = () => {
   return (
-    <div className=" h-screen">
+    <div className="h-screen">
       <h4 className="text-sm font-semibold">Active Alarm</h4>
-      <div className=" my-5">
-        <Select  >
-          <SelectTrigger className=" w-50  bg-white " >
-            <SelectValue className=" " placeholder="Select Trigger" />
-          </SelectTrigger>
-          <SelectContent position="popper">
-            <SelectItem value="a">a</SelectItem>
-            <SelectItem value="b">b</SelectItem>
-          </SelectContent>
-        </Select>
+      <div className=" grid grid-cols-2 my-8 ">
+        <div className="flex flex-wrap gap-3">
+          {alarmSummary.map((item) => (
+            <Card
+              key={item.id}
+              className="  min-w-30 px-2 border border-border bg-card  py-2 shadow-none"
+            >
+           <div className=" flex items-center gap-2">
+               <div
+                className={`flex h-8 w-8 items-center justify-center rounded-lg ${item.iconBg} ${item.iconColor}`}
+              >
+                <item.icon className="h-4 w-4" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xs font-medium text-muted-foreground">
+                  {item.label}
+                </span>
+                <span className="text-sm font-semibold tabular-nums">
+                  {item.value}
+                </span>
+              </div>
+           </div>
+            </Card>
+          ))}
+        </div>
+        <div className=" flex justify-end items-center">
+         <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1 px-2 text-xs"
+          >
+            <Filter className="h-3.5 w-3.5" />
+            Filter
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-72 p-4" align="end" sideOffset={8}>
+          <div className="space-y-4">
+            <div className="text-sm font-semibold text-foreground">
+              Filter Options
+            </div>
+
+            <div className="space-y-3">
+            {/* <MultiSelectFilterDropdown/> */}
+             
+             
+            
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 px-3 text-xs"
+             
+             
+              >
+                Reset
+              </Button>
+              <Button size="sm" className="h-7 px-3 text-xs">
+                Apply
+              </Button>
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
+        </div>
       </div>
 
-      <div className=" bg-white dark:bg-muted border rounded-md text-sm   ">
-        <div className=" border-b grid grid-cols-8 gap-2 last:border-b-0">
-          <div className=" border-r pl-2 py-2">Device Name</div>
+      <div className="bg-white dark:bg-muted border rounded-md text-sm">
+        <div className="border-b grid grid-cols-8 gap-2 last:border-b-0">
+          <div className="border-r pl-2 py-2">Device Name</div>
           <div className="border-r py-2">Trigger Name</div>
           <div className="border-r py-2">Site Type</div>
           <div className="border-r py-2 col-span-2">Alarm Generate Time</div>

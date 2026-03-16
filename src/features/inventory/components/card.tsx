@@ -11,7 +11,7 @@ const InventoryCard = ({ section }: { section: any }) => {
           {section.title}
         </h3>
 
-        <div className="space-y-1.5">
+        <div className="space-y-1.5 text-sm ">
           {section.items.map((item: any) => (
             <div
               key={item.label}

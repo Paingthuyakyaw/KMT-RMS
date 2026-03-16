@@ -217,7 +217,7 @@ const InventoryTable = ({
     <div className="overflow-hidden rounded-lg border border-border bg-card shadow-none">
       <ScrollArea className="h-130 w-full whitespace-nowrap">
         <div className="min-w-max">
-          <Table className="">
+          <Table className=" text-sm">
             <TableHeader>
               <TableRow className="bg-muted">
                 {columns.map((col) => (

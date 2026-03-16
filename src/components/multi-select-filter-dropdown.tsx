@@ -8,10 +8,15 @@ import {
 } from "@/components/ui/popover";
 import { ChevronDown } from "lucide-react";
 
+export type MultiSelectOption = {
+  label: string;
+  value: string;
+};
+
 type MultiSelectFilterDropdownProps = {
   label: string;
   placeholder: string;
-  options: string[];
+  options: MultiSelectOption[];
   values: string[];
   onChange: (values: string[]) => void;
 };
@@ -26,13 +31,13 @@ export const MultiSelectFilterDropdown = ({
   const selectedLabel =
     values.length === 0 ? placeholder : `${values.length} selected`;
 
-  const handleToggleOption = (option: string, checked: boolean | string) => {
+  const handleToggleOption = (optionValue: string, checked: boolean | string) => {
     if (checked) {
-      if (!values.includes(option)) {
-        onChange([...values, option]);
+      if (!values.includes(optionValue)) {
+        onChange([...values, optionValue]);
       }
     } else {
-      onChange(values.filter((v) => v !== option));
+      onChange(values.filter((v) => v !== optionValue));
     }
   };
 
@@ -55,19 +60,19 @@ export const MultiSelectFilterDropdown = ({
         <PopoverContent className="w-64 p-2" align="start">
           <div className="space-y-1">
             {options.map((option) => (
-              <div key={option} className="flex items-center gap-2">
+              <div key={option.value} className="flex items-center gap-2">
                 <Checkbox
-                  id={`${label}-${option}`}
-                  checked={values.includes(option)}
+                  id={`${label}-${option.value}`}
+                  checked={values.includes(option.value)}
                   onCheckedChange={(checked) =>
-                    handleToggleOption(option, checked)
+                    handleToggleOption(option.value, checked)
                   }
                 />
                 <label
-                  htmlFor={`${label}-${option}`}
+                  htmlFor={`${label}-${option.value}`}
                   className="cursor-pointer text-xs"
                 >
-                  {option}
+                  {option.label}
                 </label>
               </div>
             ))}

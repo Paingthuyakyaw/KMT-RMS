@@ -34,7 +34,10 @@ import {
   getDisplayValue,
   type MappingState,
 } from "@/features/mapping/store";
-import { MultiSelectFilterDropdown } from "@/features/dashboard/components/multi-select-filter-dropdown";
+import {
+  MultiSelectFilterDropdown,
+  type MultiSelectOption,
+} from "@/components/multi-select-filter-dropdown";
 
 type Row = Record<string, string | number>;
 
@@ -239,25 +242,32 @@ export const columnGroups = [
   },
 ];
 
-const powerSourceModelOptions = [
-  "Grid + Battery",
-  "DG + Battery",
-  "Grid + DG + Battery",
-  "Solar + Grid",
-  "Solar + DG + Battery",
-  "Solar + Grid + Battery",
-] as const;
+const powerSourceModelOptions: MultiSelectOption[] = [
+  { label: "Grid + Battery", value: "Grid + Battery" },
+  { label: "DG + Battery", value: "DG + Battery" },
+  { label: "Grid + DG + Battery", value: "Grid + DG + Battery" },
+  { label: "Solar + Grid", value: "Solar + Grid" },
+  { label: "Solar + DG + Battery", value: "Solar + DG + Battery" },
+  { label: "Solar + Grid + Battery", value: "Solar + Grid + Battery" },
+];
 
-const powerSourceOptions = [
-  "Site On Grid",
-  "Site On DG",
-  "Site On BB",
-  "Site On Solar",
-] as const;
+const powerSourceOptions: MultiSelectOption[] = [
+  { label: "Site On Grid", value: "Site On Grid" },
+  { label: "Site On DG", value: "Site On DG" },
+  { label: "Site On BB", value: "Site On BB" },
+  { label: "Site On Solar", value: "Site On Solar" },
+];
 
-const modeOptions = ["Manual", "Auto", "Stop"] as const;
+const modeOptions: MultiSelectOption[] = [
+  { label: "Manual", value: "Manual" },
+  { label: "Auto", value: "Auto" },
+  { label: "Stop", value: "Stop" },
+];
 
-const statusOptions = ["Online", "Offline"] as const;
+const statusOptions: MultiSelectOption[] = [
+  { label: "Online", value: "Online" },
+  { label: "Offline", value: "Offline" },
+];
 
 type FilterState = {
   filterColumn: string;
@@ -487,7 +497,7 @@ const Dashboard = () => {
               <MultiSelectFilterDropdown
                 label="Power Source Model"
                 placeholder="Choose Power Source Model"
-                options={[...powerSourceModelOptions]}
+                options={powerSourceModelOptions}
                 values={filters.powerSourceModels}
                 onChange={(values) =>
                   setFilters((prev) => ({
@@ -499,7 +509,7 @@ const Dashboard = () => {
               <MultiSelectFilterDropdown
                 label="Power Source"
                 placeholder="Choose Power Source"
-                options={[...powerSourceOptions]}
+                options={powerSourceOptions}
                 values={filters.powerSources}
                 onChange={(values) =>
                   setFilters((prev) => ({
@@ -511,7 +521,7 @@ const Dashboard = () => {
               <MultiSelectFilterDropdown
                 label="Mode"
                 placeholder="Choose Mode"
-                options={[...modeOptions]}
+                options={modeOptions}
                 values={filters.modes}
                 onChange={(values) =>
                   setFilters((prev) => ({ ...prev, modes: values }))
@@ -520,7 +530,7 @@ const Dashboard = () => {
               <MultiSelectFilterDropdown
                 label="Status"
                 placeholder="Choose Device Status"
-                options={[...statusOptions]}
+                options={statusOptions}
                 values={filters.statuses}
                 onChange={(values) =>
                   setFilters((prev) => ({ ...prev, statuses: values }))
