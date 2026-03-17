@@ -1,9 +1,7 @@
+import MinorAlarm from '@/features/minor-alarm'
 import { createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/_authenticated/minor-alarm/')({
-  component: RouteComponent,
+  component: MinorAlarm,
 })
 
-function RouteComponent() {
-  return <div>Hello "/_authenticated/minor-alarm/"!</div>
-}

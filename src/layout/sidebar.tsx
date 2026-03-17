@@ -62,7 +62,10 @@ export const items = [
         title: "Major Alarm",
         path: "/major-alarm",
       },
-      
+       {
+        title: "Minor Alarm",
+        path: "/minor-alarm",
+      }, 
     ],
   },
   {
@@ -132,7 +135,7 @@ export function AppSidebar({
                         {item.children?.map((subItem) => (
                           <SidebarMenuSubItem key={subItem.title}>
                             <SidebarMenuSubButton
-                            className="hover:bg-primary text-white! hover:text-primary-foreground transition-colors duration-200"
+                            className="hover:bg-primary data-active:bg-primary data-active:text-primary-foreground text-white! hover:text-primary-foreground transition-colors duration-200"
                               asChild
                               isActive={
                                 subItem.path !== "#" &&

@@ -1,9 +1,6 @@
-import { createFileRoute } from '@tanstack/react-router'
+import MajorAlarm from "@/features/major-alarm";
+import { createFileRoute } from "@tanstack/react-router";
 
-export const Route = createFileRoute('/_authenticated/major-alarm/')({
-  component: RouteComponent,
-})
-
-function RouteComponent() {
-  return <div>Hello "/_authenticated/major-alarm/"!</div>
-}
+export const Route = createFileRoute("/_authenticated/major-alarm/")({
+  component: MajorAlarm,
+});
