@@ -2,12 +2,12 @@ import * as React from "react";
 import {
   LayoutDashboard,
   Users,
-  FileText,
   LogOut,
   ChevronRight,
   Package,
   Shuffle,
   AlarmClock,
+  AlertTriangle,
 } from "lucide-react";
 
 import {
@@ -55,17 +55,14 @@ export const items = [
     path: "/active-alarm",
   },
   {
-    title: "Reports",
-    icon: FileText,
+    title: "Alarm History",
+    icon: AlertTriangle,
     children: [
       {
-        title: "Test 1",
-        path: "#",
+        title: "Major Alarm",
+        path: "/major-alarm",
       },
-      {
-        title: "Test 2",
-        path: "#",
-      },
+      
     ],
   },
   {

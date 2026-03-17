@@ -11,7 +11,9 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedMinorAlarmIndexRouteImport } from './routes/_authenticated/minor-alarm/index'
 import { Route as AuthenticatedMappingIndexRouteImport } from './routes/_authenticated/mapping/index'
+import { Route as AuthenticatedMajorAlarmIndexRouteImport } from './routes/_authenticated/major-alarm/index'
 import { Route as AuthenticatedInventoryIndexRouteImport } from './routes/_authenticated/inventory/index'
 import { Route as AuthenticatedActiveAlarmIndexRouteImport } from './routes/_authenticated/active-alarm/index'
 
@@ -24,10 +26,22 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedMinorAlarmIndexRoute =
+  AuthenticatedMinorAlarmIndexRouteImport.update({
+    id: '/minor-alarm/',
+    path: '/minor-alarm/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedMappingIndexRoute =
   AuthenticatedMappingIndexRouteImport.update({
     id: '/mapping/',
     path: '/mapping/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedMajorAlarmIndexRoute =
+  AuthenticatedMajorAlarmIndexRouteImport.update({
+    id: '/major-alarm/',
+    path: '/major-alarm/',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedInventoryIndexRoute =
@@ -47,13 +61,17 @@ export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/active-alarm/': typeof AuthenticatedActiveAlarmIndexRoute
   '/inventory/': typeof AuthenticatedInventoryIndexRoute
+  '/major-alarm/': typeof AuthenticatedMajorAlarmIndexRoute
   '/mapping/': typeof AuthenticatedMappingIndexRoute
+  '/minor-alarm/': typeof AuthenticatedMinorAlarmIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof AuthenticatedIndexRoute
   '/active-alarm': typeof AuthenticatedActiveAlarmIndexRoute
   '/inventory': typeof AuthenticatedInventoryIndexRoute
+  '/major-alarm': typeof AuthenticatedMajorAlarmIndexRoute
   '/mapping': typeof AuthenticatedMappingIndexRoute
+  '/minor-alarm': typeof AuthenticatedMinorAlarmIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -61,20 +79,36 @@ export interface FileRoutesById {
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/active-alarm/': typeof AuthenticatedActiveAlarmIndexRoute
   '/_authenticated/inventory/': typeof AuthenticatedInventoryIndexRoute
+  '/_authenticated/major-alarm/': typeof AuthenticatedMajorAlarmIndexRoute
   '/_authenticated/mapping/': typeof AuthenticatedMappingIndexRoute
+  '/_authenticated/minor-alarm/': typeof AuthenticatedMinorAlarmIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/active-alarm/' | '/inventory/' | '/mapping/'
+  fullPaths:
+    | '/'
+    | '/active-alarm/'
+    | '/inventory/'
+    | '/major-alarm/'
+    | '/mapping/'
+    | '/minor-alarm/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/active-alarm' | '/inventory' | '/mapping'
+  to:
+    | '/'
+    | '/active-alarm'
+    | '/inventory'
+    | '/major-alarm'
+    | '/mapping'
+    | '/minor-alarm'
   id:
     | '__root__'
     | '/_authenticated'
     | '/_authenticated/'
     | '/_authenticated/active-alarm/'
     | '/_authenticated/inventory/'
+    | '/_authenticated/major-alarm/'
     | '/_authenticated/mapping/'
+    | '/_authenticated/minor-alarm/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -97,11 +131,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/minor-alarm/': {
+      id: '/_authenticated/minor-alarm/'
+      path: '/minor-alarm'
+      fullPath: '/minor-alarm/'
+      preLoaderRoute: typeof AuthenticatedMinorAlarmIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/mapping/': {
       id: '/_authenticated/mapping/'
       path: '/mapping'
       fullPath: '/mapping/'
       preLoaderRoute: typeof AuthenticatedMappingIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/major-alarm/': {
+      id: '/_authenticated/major-alarm/'
+      path: '/major-alarm'
+      fullPath: '/major-alarm/'
+      preLoaderRoute: typeof AuthenticatedMajorAlarmIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/inventory/': {
@@ -125,14 +173,18 @@ interface AuthenticatedRouteChildren {
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedActiveAlarmIndexRoute: typeof AuthenticatedActiveAlarmIndexRoute
   AuthenticatedInventoryIndexRoute: typeof AuthenticatedInventoryIndexRoute
+  AuthenticatedMajorAlarmIndexRoute: typeof AuthenticatedMajorAlarmIndexRoute
   AuthenticatedMappingIndexRoute: typeof AuthenticatedMappingIndexRoute
+  AuthenticatedMinorAlarmIndexRoute: typeof AuthenticatedMinorAlarmIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedActiveAlarmIndexRoute: AuthenticatedActiveAlarmIndexRoute,
   AuthenticatedInventoryIndexRoute: AuthenticatedInventoryIndexRoute,
+  AuthenticatedMajorAlarmIndexRoute: AuthenticatedMajorAlarmIndexRoute,
   AuthenticatedMappingIndexRoute: AuthenticatedMappingIndexRoute,
+  AuthenticatedMinorAlarmIndexRoute: AuthenticatedMinorAlarmIndexRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
