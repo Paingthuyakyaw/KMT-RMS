@@ -90,8 +90,8 @@ export function AppSidebar({
   onTabChange,
   ...props
 }: AppSidebarProps) {
-  let { pathname } = useLocation();
-  pathname = "/" + pathname.split("/")[1];
+  const { pathname: fullPathname } = useLocation();
+  const pathname = "/" + fullPathname.split("/")[1];
 
   return (
     <Sidebar className="" collapsible="offcanvas" {...props}>
@@ -120,8 +120,11 @@ export function AppSidebar({
                   className="group/collapsible"
                 >
                   <SidebarMenuItem>
-                    <CollapsibleTrigger asChild>
-                      <SidebarMenuButton tooltip={item.title}>
+                    <CollapsibleTrigger className=" hover:bg-primary hover:text-primary-foreground transition-colors duration-200" asChild>
+                      <SidebarMenuButton
+                        tooltip={item.title}
+                        className="hover:bg-primary! hover:text-primary-foreground! transition-colors duration-200"
+                      >
                         {item.icon && <item.icon />}
                         <span className=" text-sm truncate">{item.title}</span>
                         <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
@@ -132,10 +135,12 @@ export function AppSidebar({
                         {item.children?.map((subItem) => (
                           <SidebarMenuSubItem key={subItem.title}>
                             <SidebarMenuSubButton
+                            className="hover:bg-primary text-white! hover:text-primary-foreground transition-colors duration-200"
                               asChild
                               isActive={
                                 subItem.path !== "#" &&
-                                pathname === subItem.path
+                                (fullPathname === subItem.path ||
+                                  fullPathname.startsWith(subItem.path + "/"))
                               }
                             >
                               <Link to={subItem.path}>
@@ -154,7 +159,7 @@ export function AppSidebar({
             ) : (
               <>
                 <SidebarMenuItem>
-                  <SidebarMenuButton className=" data-active:bg-primary hover:bg-primary hover:text-stone-200 transition-colors duration-200 data-active:text-stone-200"  asChild isActive={pathname === item.path}>
+                  <SidebarMenuButton className="data-active:bg-primary data-active:text-primary-foreground hover:bg-primary hover:text-primary-foreground transition-colors duration-200" asChild isActive={pathname === item.path}>
                     <Link to={item.path}>
                       <item.icon />
                       <span className=" text-sm">{item.title}</span>

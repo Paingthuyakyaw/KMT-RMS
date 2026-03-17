@@ -356,7 +356,7 @@ const Dashboard = () => {
   const tableContent = (
     <ScrollArea className="h-full w-full whitespace-nowrap">
       <div className="min-w-max">
-        <Table className="table w-max text-sm table-auto border-collapse">
+        <Table className="table w-max text-sm table-auto border-collapse bg-muted!">
           <TableHeader>
             {/* Group header row */}
             <TableRow className="sticky  top-0 z-30 border-0 bg-muted">
@@ -401,7 +401,7 @@ const Dashboard = () => {
                       key={col.key}
                       className={
                         col.key === "siteId"
-                          ? "sticky left-0 z-10 bg-card text-sm"
+                          ? "sticky left-0 z-10 bg-muted text-sm"
                           : "text-sm"
                       }
                       style={{

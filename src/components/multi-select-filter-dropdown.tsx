@@ -43,7 +43,7 @@ export const MultiSelectFilterDropdown = ({
 
   return (
     <div className="space-y-1">
-      <Label className="text-xs font-medium text-muted-foreground">
+      <Label className=" font-medium text-muted-foreground">
         {label}
       </Label>
       <Popover>
@@ -51,9 +51,9 @@ export const MultiSelectFilterDropdown = ({
           <Button
             variant="outline"
             size="sm"
-            className="h-8 w-full justify-between px-2 text-xs"
+            className="h-8 w-full justify-between px-2 "
           >
-            <span className="truncate">{selectedLabel}</span>
+            <span className="truncate font-normal ">{selectedLabel}</span>
             <ChevronDown className="ml-2 h-3 w-3 opacity-70" />
           </Button>
         </PopoverTrigger>
@@ -70,7 +70,7 @@ export const MultiSelectFilterDropdown = ({
                 />
                 <label
                   htmlFor={`${label}-${option.value}`}
-                  className="cursor-pointer text-xs"
+                  className="cursor-pointer "
                 >
                   {option.label}
                 </label>
