@@ -66,6 +66,10 @@ export const items = [
         title: "Minor Alarm",
         path: "/minor-alarm",
       }, 
+      {
+        title : "Critical Alarm",
+        path: "/critial-alarm",
+      }
     ],
   },
   {
