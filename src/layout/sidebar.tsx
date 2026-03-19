@@ -73,13 +73,21 @@ export const items = [
     ],
   },
   {
-    title: "Team",
+    title: "Report",
     icon: Users,
     children: [
       {
-        title: "Test 3",
-        path: "#",
+        title: "Log",
+        path: "/log",
       },
+      {
+        title : "Energy Consumption",
+        path : "/energy-consumption"
+      },
+       {
+        title : "Load Consumption",
+        path : "/load-consumption"
+      }
     ],
   },
 ];

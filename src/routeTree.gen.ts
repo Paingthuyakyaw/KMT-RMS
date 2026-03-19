@@ -14,7 +14,10 @@ import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedMinorAlarmIndexRouteImport } from './routes/_authenticated/minor-alarm/index'
 import { Route as AuthenticatedMappingIndexRouteImport } from './routes/_authenticated/mapping/index'
 import { Route as AuthenticatedMajorAlarmIndexRouteImport } from './routes/_authenticated/major-alarm/index'
+import { Route as AuthenticatedLogIndexRouteImport } from './routes/_authenticated/log/index'
+import { Route as AuthenticatedLoadConsumptionIndexRouteImport } from './routes/_authenticated/load-consumption/index'
 import { Route as AuthenticatedInventoryIndexRouteImport } from './routes/_authenticated/inventory/index'
+import { Route as AuthenticatedEnergyConsumptionIndexRouteImport } from './routes/_authenticated/energy-consumption/index'
 import { Route as AuthenticatedCritialAlarmIndexRouteImport } from './routes/_authenticated/critial-alarm/index'
 import { Route as AuthenticatedActiveAlarmIndexRouteImport } from './routes/_authenticated/active-alarm/index'
 
@@ -45,10 +48,27 @@ const AuthenticatedMajorAlarmIndexRoute =
     path: '/major-alarm/',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedLogIndexRoute = AuthenticatedLogIndexRouteImport.update({
+  id: '/log/',
+  path: '/log/',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedLoadConsumptionIndexRoute =
+  AuthenticatedLoadConsumptionIndexRouteImport.update({
+    id: '/load-consumption/',
+    path: '/load-consumption/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedInventoryIndexRoute =
   AuthenticatedInventoryIndexRouteImport.update({
     id: '/inventory/',
     path: '/inventory/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedEnergyConsumptionIndexRoute =
+  AuthenticatedEnergyConsumptionIndexRouteImport.update({
+    id: '/energy-consumption/',
+    path: '/energy-consumption/',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedCritialAlarmIndexRoute =
@@ -68,7 +88,10 @@ export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/active-alarm/': typeof AuthenticatedActiveAlarmIndexRoute
   '/critial-alarm/': typeof AuthenticatedCritialAlarmIndexRoute
+  '/energy-consumption/': typeof AuthenticatedEnergyConsumptionIndexRoute
   '/inventory/': typeof AuthenticatedInventoryIndexRoute
+  '/load-consumption/': typeof AuthenticatedLoadConsumptionIndexRoute
+  '/log/': typeof AuthenticatedLogIndexRoute
   '/major-alarm/': typeof AuthenticatedMajorAlarmIndexRoute
   '/mapping/': typeof AuthenticatedMappingIndexRoute
   '/minor-alarm/': typeof AuthenticatedMinorAlarmIndexRoute
@@ -77,7 +100,10 @@ export interface FileRoutesByTo {
   '/': typeof AuthenticatedIndexRoute
   '/active-alarm': typeof AuthenticatedActiveAlarmIndexRoute
   '/critial-alarm': typeof AuthenticatedCritialAlarmIndexRoute
+  '/energy-consumption': typeof AuthenticatedEnergyConsumptionIndexRoute
   '/inventory': typeof AuthenticatedInventoryIndexRoute
+  '/load-consumption': typeof AuthenticatedLoadConsumptionIndexRoute
+  '/log': typeof AuthenticatedLogIndexRoute
   '/major-alarm': typeof AuthenticatedMajorAlarmIndexRoute
   '/mapping': typeof AuthenticatedMappingIndexRoute
   '/minor-alarm': typeof AuthenticatedMinorAlarmIndexRoute
@@ -88,7 +114,10 @@ export interface FileRoutesById {
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/active-alarm/': typeof AuthenticatedActiveAlarmIndexRoute
   '/_authenticated/critial-alarm/': typeof AuthenticatedCritialAlarmIndexRoute
+  '/_authenticated/energy-consumption/': typeof AuthenticatedEnergyConsumptionIndexRoute
   '/_authenticated/inventory/': typeof AuthenticatedInventoryIndexRoute
+  '/_authenticated/load-consumption/': typeof AuthenticatedLoadConsumptionIndexRoute
+  '/_authenticated/log/': typeof AuthenticatedLogIndexRoute
   '/_authenticated/major-alarm/': typeof AuthenticatedMajorAlarmIndexRoute
   '/_authenticated/mapping/': typeof AuthenticatedMappingIndexRoute
   '/_authenticated/minor-alarm/': typeof AuthenticatedMinorAlarmIndexRoute
@@ -99,7 +128,10 @@ export interface FileRouteTypes {
     | '/'
     | '/active-alarm/'
     | '/critial-alarm/'
+    | '/energy-consumption/'
     | '/inventory/'
+    | '/load-consumption/'
+    | '/log/'
     | '/major-alarm/'
     | '/mapping/'
     | '/minor-alarm/'
@@ -108,7 +140,10 @@ export interface FileRouteTypes {
     | '/'
     | '/active-alarm'
     | '/critial-alarm'
+    | '/energy-consumption'
     | '/inventory'
+    | '/load-consumption'
+    | '/log'
     | '/major-alarm'
     | '/mapping'
     | '/minor-alarm'
@@ -118,7 +153,10 @@ export interface FileRouteTypes {
     | '/_authenticated/'
     | '/_authenticated/active-alarm/'
     | '/_authenticated/critial-alarm/'
+    | '/_authenticated/energy-consumption/'
     | '/_authenticated/inventory/'
+    | '/_authenticated/load-consumption/'
+    | '/_authenticated/log/'
     | '/_authenticated/major-alarm/'
     | '/_authenticated/mapping/'
     | '/_authenticated/minor-alarm/'
@@ -165,11 +203,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMajorAlarmIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/log/': {
+      id: '/_authenticated/log/'
+      path: '/log'
+      fullPath: '/log/'
+      preLoaderRoute: typeof AuthenticatedLogIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/load-consumption/': {
+      id: '/_authenticated/load-consumption/'
+      path: '/load-consumption'
+      fullPath: '/load-consumption/'
+      preLoaderRoute: typeof AuthenticatedLoadConsumptionIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/inventory/': {
       id: '/_authenticated/inventory/'
       path: '/inventory'
       fullPath: '/inventory/'
       preLoaderRoute: typeof AuthenticatedInventoryIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/energy-consumption/': {
+      id: '/_authenticated/energy-consumption/'
+      path: '/energy-consumption'
+      fullPath: '/energy-consumption/'
+      preLoaderRoute: typeof AuthenticatedEnergyConsumptionIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/critial-alarm/': {
@@ -193,7 +252,10 @@ interface AuthenticatedRouteChildren {
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedActiveAlarmIndexRoute: typeof AuthenticatedActiveAlarmIndexRoute
   AuthenticatedCritialAlarmIndexRoute: typeof AuthenticatedCritialAlarmIndexRoute
+  AuthenticatedEnergyConsumptionIndexRoute: typeof AuthenticatedEnergyConsumptionIndexRoute
   AuthenticatedInventoryIndexRoute: typeof AuthenticatedInventoryIndexRoute
+  AuthenticatedLoadConsumptionIndexRoute: typeof AuthenticatedLoadConsumptionIndexRoute
+  AuthenticatedLogIndexRoute: typeof AuthenticatedLogIndexRoute
   AuthenticatedMajorAlarmIndexRoute: typeof AuthenticatedMajorAlarmIndexRoute
   AuthenticatedMappingIndexRoute: typeof AuthenticatedMappingIndexRoute
   AuthenticatedMinorAlarmIndexRoute: typeof AuthenticatedMinorAlarmIndexRoute
@@ -203,7 +265,12 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedActiveAlarmIndexRoute: AuthenticatedActiveAlarmIndexRoute,
   AuthenticatedCritialAlarmIndexRoute: AuthenticatedCritialAlarmIndexRoute,
+  AuthenticatedEnergyConsumptionIndexRoute:
+    AuthenticatedEnergyConsumptionIndexRoute,
   AuthenticatedInventoryIndexRoute: AuthenticatedInventoryIndexRoute,
+  AuthenticatedLoadConsumptionIndexRoute:
+    AuthenticatedLoadConsumptionIndexRoute,
+  AuthenticatedLogIndexRoute: AuthenticatedLogIndexRoute,
   AuthenticatedMajorAlarmIndexRoute: AuthenticatedMajorAlarmIndexRoute,
   AuthenticatedMappingIndexRoute: AuthenticatedMappingIndexRoute,
   AuthenticatedMinorAlarmIndexRoute: AuthenticatedMinorAlarmIndexRoute,

@@ -131,3 +131,13 @@
 [data-slot="sidebar-inner"] {
   @apply bg-[#2C3E50] dark:bg-sidebar text-white
 }
+
+/* Log table: match dark-mode table grid lines */
+.log-table th {
+  border-color: var(--border) !important;
+  border-width: 1px !important;
+  border-style: solid !important;
+}
+.log-table td {
+  border-color: var(--border) !important;
+}
