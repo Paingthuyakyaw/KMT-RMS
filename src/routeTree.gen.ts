@@ -20,6 +20,7 @@ import { Route as AuthenticatedInventoryIndexRouteImport } from './routes/_authe
 import { Route as AuthenticatedEnergyConsumptionIndexRouteImport } from './routes/_authenticated/energy-consumption/index'
 import { Route as AuthenticatedCritialAlarmIndexRouteImport } from './routes/_authenticated/critial-alarm/index'
 import { Route as AuthenticatedActiveAlarmIndexRouteImport } from './routes/_authenticated/active-alarm/index'
+import { Route as AuthenticatedChartIdRouteImport } from './routes/_authenticated/chart/$id'
 
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
@@ -83,9 +84,15 @@ const AuthenticatedActiveAlarmIndexRoute =
     path: '/active-alarm/',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedChartIdRoute = AuthenticatedChartIdRouteImport.update({
+  id: '/chart/$id',
+  path: '/chart/$id',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
+  '/chart/$id': typeof AuthenticatedChartIdRoute
   '/active-alarm/': typeof AuthenticatedActiveAlarmIndexRoute
   '/critial-alarm/': typeof AuthenticatedCritialAlarmIndexRoute
   '/energy-consumption/': typeof AuthenticatedEnergyConsumptionIndexRoute
@@ -98,6 +105,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof AuthenticatedIndexRoute
+  '/chart/$id': typeof AuthenticatedChartIdRoute
   '/active-alarm': typeof AuthenticatedActiveAlarmIndexRoute
   '/critial-alarm': typeof AuthenticatedCritialAlarmIndexRoute
   '/energy-consumption': typeof AuthenticatedEnergyConsumptionIndexRoute
@@ -112,6 +120,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/chart/$id': typeof AuthenticatedChartIdRoute
   '/_authenticated/active-alarm/': typeof AuthenticatedActiveAlarmIndexRoute
   '/_authenticated/critial-alarm/': typeof AuthenticatedCritialAlarmIndexRoute
   '/_authenticated/energy-consumption/': typeof AuthenticatedEnergyConsumptionIndexRoute
@@ -126,6 +135,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/chart/$id'
     | '/active-alarm/'
     | '/critial-alarm/'
     | '/energy-consumption/'
@@ -138,6 +148,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/chart/$id'
     | '/active-alarm'
     | '/critial-alarm'
     | '/energy-consumption'
@@ -151,6 +162,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_authenticated'
     | '/_authenticated/'
+    | '/_authenticated/chart/$id'
     | '/_authenticated/active-alarm/'
     | '/_authenticated/critial-alarm/'
     | '/_authenticated/energy-consumption/'
@@ -245,11 +257,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedActiveAlarmIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/chart/$id': {
+      id: '/_authenticated/chart/$id'
+      path: '/chart/$id'
+      fullPath: '/chart/$id'
+      preLoaderRoute: typeof AuthenticatedChartIdRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
   }
 }
 
 interface AuthenticatedRouteChildren {
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+  AuthenticatedChartIdRoute: typeof AuthenticatedChartIdRoute
   AuthenticatedActiveAlarmIndexRoute: typeof AuthenticatedActiveAlarmIndexRoute
   AuthenticatedCritialAlarmIndexRoute: typeof AuthenticatedCritialAlarmIndexRoute
   AuthenticatedEnergyConsumptionIndexRoute: typeof AuthenticatedEnergyConsumptionIndexRoute
@@ -263,6 +283,7 @@ interface AuthenticatedRouteChildren {
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+  AuthenticatedChartIdRoute: AuthenticatedChartIdRoute,
   AuthenticatedActiveAlarmIndexRoute: AuthenticatedActiveAlarmIndexRoute,
   AuthenticatedCritialAlarmIndexRoute: AuthenticatedCritialAlarmIndexRoute,
   AuthenticatedEnergyConsumptionIndexRoute:

@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Link } from "@tanstack/react-router";
 import {
   Combobox,
   ComboboxContent,
@@ -38,6 +39,7 @@ import {
   MultiSelectFilterDropdown,
   type MultiSelectOption,
 } from "@/components/multi-select-filter-dropdown";
+// Line chart modal extracted to dedicated chart page route
 
 type Row = Record<string, string | number>;
 
@@ -64,6 +66,35 @@ const rows: Row[] = Array.from({ length: 50 }, (_, i) => {
     powerModel: i % 5 === 0 ? 50 : "Hybrid",
     powerSource: powerSources[i % powerSources.length],
     dgControllerMode: modes[i % modes.length],
+
+    // Demo numeric values for "View Detail" chart
+    roomTemp: 22 + (i % 10) * 0.35,
+    battVoltage: 48 + Math.sin(i / 4) * 0.8,
+    battCurrent: 10 + (i % 7) * 0.55,
+    soc: 45 + (i % 35),
+
+    tenant2Load: 0.6 + (i % 10) * 0.06,
+    engineFQ: 49.8 + (i % 6) * 0.05,
+
+    gensetL1V: 396 + (i % 8) * 0.55,
+    gensetL2V: 398 + (i % 8) * 0.45,
+    gensetL3V: 400 + (i % 8) * 0.35,
+
+    gensetL1A: 10 + (i % 6) * 0.35,
+    gensetL2A: 9.5 + (i % 6) * 0.4,
+    gensetL3A: 9.8 + (i % 6) * 0.32,
+
+    gridFQ: 50 + (i % 7) * 0.01,
+    gridL1V: 401 + (i % 8) * 0.35,
+    gridL2V: 399 + (i % 8) * 0.42,
+    gridL3V: 402 + (i % 8) * 0.28,
+
+    pv1Input: 205 + (i % 12) * 0.25,
+    pv2Input: 207 + (i % 12) * 0.23,
+    pv3Input: 209 + (i % 12) * 0.21,
+    pv4Input: 211 + (i % 12) * 0.19,
+
+    batteryBackup: 120 + (i % 80),
   };
 });
 
@@ -289,6 +320,7 @@ const Dashboard = () => {
     cardsExpanded: false,
     tableExpanded: false,
   });
+
   const [filters, setFilters] = useState<FilterState>({
     filterColumn: "siteId",
     filterQuery: "",
@@ -409,11 +441,59 @@ const Dashboard = () => {
                         boxSizing: "border-box",
                       }}
                     >
-                      {getDisplayValue(
-                        col.key,
-                        row[col.key as keyof typeof row],
-                        rules,
-                      ) ?? "-"}
+                      {col.key === "viewDetail" ? (
+                        <div className="flex flex-col items-start gap-1">
+                          <span>
+                            {getDisplayValue(
+                              col.key,
+                              row[col.key as keyof typeof row],
+                              rules,
+                            ) ?? "-"}
+                          </span>
+                          <Link
+                            to={`/chart/${rowIndex}` as any}
+                            
+                            className="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                            title="View chart page"
+                            aria-label="View chart page"
+                          >
+                            <svg
+                              viewBox="0 0 24 24"
+                              width="16"
+                              height="16"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                              aria-hidden="true"
+                            >
+                              <path
+                                d="M4 19V5"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                              />
+                              <path
+                                d="M4 19H20"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                              />
+                              <path
+                                d="M7 15L11 11L13 13L18 8"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          </Link>
+                        </div>
+                      ) : (
+                        getDisplayValue(
+                          col.key,
+                          row[col.key as keyof typeof row],
+                          rules,
+                        ) ?? "-"
+                      )}
                     </TableCell>
                   )),
                 )}
@@ -501,7 +581,7 @@ const Dashboard = () => {
                 values={filters.powerSourceModels}
                 onChange={(values) =>
                   setFilters((prev) => ({
-                    ...prev,
+                    ...prev, 
                     powerSourceModels: values,
                   }))
                 }
@@ -682,6 +762,8 @@ const Dashboard = () => {
           </div>
         </div>
       )}
+
+      {/* Line chart is available in dedicated /chart page route */}
     </div>
   );
 };
