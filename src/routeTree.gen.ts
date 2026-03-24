@@ -20,6 +20,7 @@ import { Route as AuthenticatedInventoryIndexRouteImport } from './routes/_authe
 import { Route as AuthenticatedEnergyConsumptionIndexRouteImport } from './routes/_authenticated/energy-consumption/index'
 import { Route as AuthenticatedCritialAlarmIndexRouteImport } from './routes/_authenticated/critial-alarm/index'
 import { Route as AuthenticatedActiveAlarmIndexRouteImport } from './routes/_authenticated/active-alarm/index'
+import { Route as authLoginIndexRouteImport } from './routes/(auth)/login/index'
 import { Route as AuthenticatedChartIdRouteImport } from './routes/_authenticated/chart/$id'
 
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
@@ -84,6 +85,11 @@ const AuthenticatedActiveAlarmIndexRoute =
     path: '/active-alarm/',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const authLoginIndexRoute = authLoginIndexRouteImport.update({
+  id: '/(auth)/login/',
+  path: '/login/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedChartIdRoute = AuthenticatedChartIdRouteImport.update({
   id: '/chart/$id',
   path: '/chart/$id',
@@ -93,6 +99,7 @@ const AuthenticatedChartIdRoute = AuthenticatedChartIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/chart/$id': typeof AuthenticatedChartIdRoute
+  '/login/': typeof authLoginIndexRoute
   '/active-alarm/': typeof AuthenticatedActiveAlarmIndexRoute
   '/critial-alarm/': typeof AuthenticatedCritialAlarmIndexRoute
   '/energy-consumption/': typeof AuthenticatedEnergyConsumptionIndexRoute
@@ -106,6 +113,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof AuthenticatedIndexRoute
   '/chart/$id': typeof AuthenticatedChartIdRoute
+  '/login': typeof authLoginIndexRoute
   '/active-alarm': typeof AuthenticatedActiveAlarmIndexRoute
   '/critial-alarm': typeof AuthenticatedCritialAlarmIndexRoute
   '/energy-consumption': typeof AuthenticatedEnergyConsumptionIndexRoute
@@ -121,6 +129,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/chart/$id': typeof AuthenticatedChartIdRoute
+  '/(auth)/login/': typeof authLoginIndexRoute
   '/_authenticated/active-alarm/': typeof AuthenticatedActiveAlarmIndexRoute
   '/_authenticated/critial-alarm/': typeof AuthenticatedCritialAlarmIndexRoute
   '/_authenticated/energy-consumption/': typeof AuthenticatedEnergyConsumptionIndexRoute
@@ -136,6 +145,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/chart/$id'
+    | '/login/'
     | '/active-alarm/'
     | '/critial-alarm/'
     | '/energy-consumption/'
@@ -149,6 +159,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/chart/$id'
+    | '/login'
     | '/active-alarm'
     | '/critial-alarm'
     | '/energy-consumption'
@@ -163,6 +174,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/_authenticated/'
     | '/_authenticated/chart/$id'
+    | '/(auth)/login/'
     | '/_authenticated/active-alarm/'
     | '/_authenticated/critial-alarm/'
     | '/_authenticated/energy-consumption/'
@@ -176,6 +188,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
+  authLoginIndexRoute: typeof authLoginIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -257,6 +270,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedActiveAlarmIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/(auth)/login/': {
+      id: '/(auth)/login/'
+      path: '/login'
+      fullPath: '/login/'
+      preLoaderRoute: typeof authLoginIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/chart/$id': {
       id: '/_authenticated/chart/$id'
       path: '/chart/$id'
@@ -303,6 +323,7 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
+  authLoginIndexRoute: authLoginIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

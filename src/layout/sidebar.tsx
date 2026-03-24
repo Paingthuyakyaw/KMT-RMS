@@ -88,10 +88,7 @@ export const items = [
         title : "Load Consumption",
         path : "/load-consumption"
       },
-      {
-        title : "Chart",
-        path : "/chart"
-      }
+      
     ],
   },
 ];

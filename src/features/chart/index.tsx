@@ -1,24 +1,27 @@
-import { useEffect, useMemo, useState } from "react";
-import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
+import { useMemo, useState } from "react";
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import dayjs from "dayjs";
+import { Filter, RefreshCcw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { DatePickerWithRange } from "@/components/date-range";
 import type { DateRange } from "react-day-picker";
-import dayjs from "dayjs";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
   ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
 
@@ -44,6 +47,17 @@ type SeriesKey =
   | "pv3Input"
   | "pv4Input"
   | "batteryBackup";
+
+type BackendSeriesResponse = {
+  date_rows: string[];
+  data_rows: string[];
+};
+
+type BackendChartResponse = Partial<Record<SeriesKey, BackendSeriesResponse>>;
+
+type ChartRow = {
+  ts: number;
+} & Partial<Record<SeriesKey, number>>;
 
 const seriesMeta: Array<{ key: SeriesKey; label: string }> = [
   { key: "battVoltage", label: "Battery_Voltage" },
@@ -84,118 +98,655 @@ const seriesColors = [
   "#93c5fd",
 ] as const;
 
-function hashString(s: string) {
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 16777619);
+/**
+ * Demo backend response
+ * တကယ် API ခေါ်တဲ့အခါ ဒီ object နေရာမှာ api response ထည့်လိုက်ရုံ
+ */
+const mockApiResponse: BackendChartResponse = {
+  battVoltage: {
+    date_rows: [
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56",
+        "2026-01-08 10:13:56"
+    ],
+    data_rows: [
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4",
+        "53.4"
+    ]
+},
+  battCurrent: {
+    date_rows: [
+      "2026-03-22 00:00:00",
+      "2026-03-22 01:00:00",
+      "2026-03-22 02:00:00",
+      "2026-03-22 03:00:00",
+      "2026-03-22 04:00:00",
+      "2026-03-22 05:00:00",
+      "2026-03-22 06:00:00",
+      "2026-03-22 07:00:00",
+      "2026-03-22 08:00:00",
+      "2026-03-22 09:00:00",
+      "2026-03-22 10:00:00",
+      "2026-03-22 11:00:00",
+      "2026-03-22 12:00:00",
+      "2026-03-22 13:00:00",
+      "2026-03-22 14:00:00",
+    ],
+    data_rows: [
+      "10.1",
+      "10.5",
+      "10.3",
+      "10.2",
+      "10.6",
+      "10.8",
+      "10.4",
+      "10.1",
+      "9.8",
+      "9.6",
+      "9.9",
+      "10.2",
+      "10.3",
+      "10.6",
+      "10.7",
+    ],
+  },
+  roomTemp: {
+    date_rows: [
+      "2026-03-22 00:00:00",
+      "2026-03-22 01:00:00",
+      "2026-03-22 02:00:00",
+      "2026-03-22 03:00:00",
+      "2026-03-22 04:00:00",
+      "2026-03-22 05:00:00",
+      "2026-03-22 06:00:00",
+      "2026-03-22 07:00:00",
+      "2026-03-22 08:00:00",
+      "2026-03-22 09:00:00",
+      "2026-03-22 10:00:00",
+      "2026-03-22 11:00:00",
+      "2026-03-22 12:00:00",
+      "2026-03-22 13:00:00",
+      "2026-03-22 14:00:00",
+    ],
+    data_rows: [
+      "26.2",
+      "26.0",
+      "25.9",
+      "25.8",
+      "25.7",
+      "25.9",
+      "26.4",
+      "27.1",
+      "27.8",
+      "28.2",
+      "28.4",
+      "28.3",
+      "28.0",
+      "27.6",
+      "27.2",
+    ],
+  },
+  soc: {
+    date_rows: [
+      "2026-03-22 00:00:00",
+      "2026-03-22 01:00:00",
+      "2026-03-22 02:00:00",
+      "2026-03-22 03:00:00",
+      "2026-03-22 04:00:00",
+      "2026-03-22 05:00:00",
+      "2026-03-22 06:00:00",
+      "2026-03-22 07:00:00",
+      "2026-03-22 08:00:00",
+      "2026-03-22 09:00:00",
+      "2026-03-22 10:00:00",
+      "2026-03-22 11:00:00",
+      "2026-03-22 12:00:00",
+      "2026-03-22 13:00:00",
+      "2026-03-22 14:00:00",
+    ],
+    data_rows: [
+      "78",
+      "78",
+      "77",
+      "77",
+      "76",
+      "76",
+      "75",
+      "75",
+      "74",
+      "74",
+      "73",
+      "73",
+      "72",
+      "72",
+      "71",
+    ],
+  },
+  tenant2Load: {
+    date_rows: [
+      "2026-03-22 00:00:00",
+      "2026-03-22 01:00:00",
+      "2026-03-22 02:00:00",
+      "2026-03-22 03:00:00",
+      "2026-03-22 04:00:00",
+      "2026-03-22 05:00:00",
+      "2026-03-22 06:00:00",
+      "2026-03-22 07:00:00",
+      "2026-03-22 08:00:00",
+      "2026-03-22 09:00:00",
+      "2026-03-22 10:00:00",
+      "2026-03-22 11:00:00",
+      "2026-03-22 12:00:00",
+      "2026-03-22 13:00:00",
+      "2026-03-22 14:00:00",
+    ],
+    data_rows: [
+      "0.20",
+      "0.25",
+      "0.30",
+      "0.31",
+      "0.29",
+      "0.40",
+      "0.50",
+      "0.60",
+      "0.58",
+      "0.54",
+      "0.59",
+      "0.63",
+      "0.57",
+      "0.49",
+      "0.45",
+    ],
+  },
+  engineFQ: {
+    date_rows: [
+      "2026-03-22 00:00:00",
+      "2026-03-22 01:00:00",
+      "2026-03-22 02:00:00",
+      "2026-03-22 03:00:00",
+      "2026-03-22 04:00:00",
+      "2026-03-22 05:00:00",
+      "2026-03-22 06:00:00",
+      "2026-03-22 07:00:00",
+      "2026-03-22 08:00:00",
+      "2026-03-22 09:00:00",
+      "2026-03-22 10:00:00",
+      "2026-03-22 11:00:00",
+      "2026-03-22 12:00:00",
+      "2026-03-22 13:00:00",
+      "2026-03-22 14:00:00",
+    ],
+    data_rows: [
+      "49.2",
+      "49.3",
+      "49.2",
+      "49.4",
+      "49.5",
+      "49.6",
+      "49.5",
+      "49.6",
+      "49.7",
+      "49.6",
+      "49.5",
+      "49.6",
+      "49.4",
+      "49.5",
+      "49.6",
+    ],
+  },
+};
+
+function parseDateToTs(value: string) {
+  const parsed = dayjs(value);
+  if (parsed.isValid()) return parsed.valueOf();
+
+  const fallback = dayjs(value.replace(" ", "T"));
+  return fallback.isValid() ? fallback.valueOf() : NaN;
+}
+
+function transformBackendData(
+  apiData: BackendChartResponse,
+  selectedKeys: SeriesKey[],
+): ChartRow[] {
+  const rowMap = new Map<number, ChartRow>();
+
+  for (const key of selectedKeys) {
+    const series = apiData[key];
+    if (!series) continue;
+
+    const maxLength = Math.min(series.date_rows.length, series.data_rows.length);
+
+    for (let i = 0; i < maxLength; i++) {
+      const ts = parseDateToTs(series.date_rows[i]);
+      const value = Number(series.data_rows[i]);
+
+      if (!Number.isFinite(ts) || !Number.isFinite(value)) continue;
+
+      const existing = rowMap.get(ts) ?? { ts };
+      existing[key] = value;
+      rowMap.set(ts, existing);
+    }
   }
-  return h >>> 0;
+
+  return Array.from(rowMap.values()).sort((a, b) => a.ts - b.ts);
 }
-
-function mulberry32(a: number) {
-  return () => {
-    let t = (a += 0x6d2b79f5);
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(Math.max(value, min), max);
-}
-
-function makeDateTimeSeries(n: number, seed: string) {
-  const now = new Date();
-
-  return Array.from({ length: n }, (_, i) => {
-    const d = new Date(now.getTime() - (n - 1 - i) * 86400000);
-    const h = hashString(`${seed}-${i}-h`) % 24;
-    const m = hashString(`${seed}-${i}-m`) % 60;
-    d.setHours(h, m, 0, 0);
-    return d.valueOf();
-  });
-}
-
-const baseRowDemo: Record<SeriesKey, number> = {
-  battVoltage: 48,
-  battCurrent: 10,
-  roomTemp: 22,
-  soc: 65,
-  tenant2Load: 0.6,
-  engineFQ: 49.8,
-  gensetL1V: 66,
-  gensetL2V: 97,
-  gensetL3V: 100,
-  gensetL1A: 10,
-  gensetL2A: 9.5,
-  gensetL3A: 9.8,
-  gridFQ: 50,
-  gridL1V: 100,
-  gridL2V: 99,
-  gridL3V: 88,
-  pv1Input: 100,
-  pv2Input: 60,
-  pv3Input: 15,
-  pv4Input: 100,
-  batteryBackup: 80,
-};
-
-const seriesRange: Record<SeriesKey, { min: number; max: number }> = {
-  battVoltage: { min: 42, max: 58 },
-  battCurrent: { min: 0, max: 30 },
-  roomTemp: { min: 18, max: 40 },
-  soc: { min: 0, max: 100 },
-  tenant2Load: { min: 0, max: 2 },
-  engineFQ: { min: 45, max: 55 },
-  gensetL1V: { min: 1, max: 100 },
-  gensetL2V: { min: 30, max: 100 },
-  gensetL3V: { min: 50, max: 70 },
-  gensetL1A: { min: 0, max: 50 },
-  gensetL2A: { min: 0, max: 50 },
-  gensetL3A: { min: 0, max: 50 },
-  gridFQ: { min: 45, max: 55 },
-  gridL1V: { min: 10, max: 100 },
-  gridL2V: { min: 44, max: 90 },
-  gridL3V: { min: 100, max: 100 },
-  pv1Input: { min: 0, max: 100 },
-  pv2Input: { min: 0, max: 100 },
-  pv3Input: { min: 0, max: 100 },
-  pv4Input: { min: 0, max: 100 },
-  batteryBackup: { min: 0, max: 100 },
-};
 
 export default function ChartPage({ chartId }: { chartId?: string }) {
-  const chartSeed = String(chartId ?? "1");
+  const [refreshNonce, setRefreshNonce] = useState(0);
 
   const [dateRange, setDateRange] = useState<DateRange | undefined>(() => ({
-    from: dayjs().subtract(49, "day").startOf("day").toDate(),
+    from: dayjs().subtract(1, "day").startOf("day").toDate(),
     to: dayjs().endOf("day").toDate(),
   }));
 
   const defaultSelectedKeys = useMemo<SeriesKey[]>(() => {
-    const n = Number(chartSeed);
-    const isOdd = Number.isNaN(n) ? hashString(chartSeed) % 2 === 1 : n % 2 === 1;
+    const id = Number(chartId ?? "0");
+    return id % 2 === 0
+      ? ["battVoltage", "tenant2Load", "engineFQ", "gensetL1V"]
+      : ["battVoltage", "battCurrent", "roomTemp", "soc"];
+  }, [chartId]);
 
-    return isOdd
-      ? ["battVoltage", "battCurrent", "roomTemp", "soc"]
-      : ["tenant2Load", "engineFQ", "gridFQ", "gensetL1V"];
-  }, [chartSeed]);
+  const [selectedKeys, setSelectedKeys] =
+    useState<SeriesKey[]>(defaultSelectedKeys);
 
-  const [selectedKeys, setSelectedKeys] = useState<SeriesKey[]>(
-    defaultSelectedKeys,
-  );
+  const apiData = useMemo(() => {
+    // တကယ် api ခေါ်ရင် refreshNonce ကို refetch trigger အဖြစ်သုံး
+    return mockApiResponse;
+  }, [refreshNonce]);
 
-  useEffect(() => {
-    setSelectedKeys(defaultSelectedKeys);
-  }, [defaultSelectedKeys]);
+  const selectedSeries = useMemo(() => {
+    return selectedKeys.map((key, idx) => {
+      const meta = seriesMeta.find((item) => item.key === key)!;
+      return {
+        key,
+        label: meta.label,
+        color: seriesColors[idx % seriesColors.length],
+      };
+    });
+  }, [selectedKeys]);
 
-  const chartX = useMemo(() => makeDateTimeSeries(50, chartSeed), [chartSeed]);
+  const chartConfig = useMemo(() => {
+    return Object.fromEntries(
+      selectedSeries.map((item) => [
+        item.key,
+        {
+          label: item.label,
+          color: item.color,
+        },
+      ]),
+    ) as ChartConfig;
+  }, [selectedSeries]);
 
-  const filteredChartX = useMemo(() => {
-    if (!dateRange?.from && !dateRange?.to) return chartX;
+  const rawChartData = useMemo(() => {
+    return transformBackendData(apiData, selectedKeys);
+  }, [apiData, selectedKeys]);
 
+  const filteredChartData = useMemo(() => {
     const fromTs = dateRange?.from
       ? dayjs(dateRange.from).startOf("day").valueOf()
       : -Infinity;
@@ -204,258 +755,262 @@ export default function ChartPage({ chartId }: { chartId?: string }) {
       ? dayjs(dateRange.to).endOf("day").valueOf()
       : Infinity;
 
-    return chartX.filter((ts) => ts >= fromTs && ts <= toTs);
-  }, [chartX, dateRange]);
+    return rawChartData.filter((row) => row.ts >= fromTs && row.ts <= toTs);
+  }, [rawChartData, dateRange]);
 
-  const [brushRange, setBrushRange] = useState<[number, number] | null>(null);
+  const selectedCount = selectedKeys.length;
 
-  useEffect(() => {
-    setBrushRange(null);
-  }, [filteredChartX, selectedKeys.join("|"), chartSeed]);
+  const yDomain = useMemo<[number, number]>(() => {
+    const values = filteredChartData.flatMap((row) =>
+      selectedKeys
+        .map((key) => row[key])
+        .filter((value): value is number => typeof value === "number"),
+    );
 
-  const chartOffset = useMemo(() => (hashString(chartSeed) % 1000) / 1000, [
-    chartSeed,
-  ]);
+    if (!values.length) return [0, 100];
 
-  const selectedSeries = useMemo(() => {
-    return selectedKeys.map((key, idx) => {
-      const meta = seriesMeta.find((s) => s.key === key)!;
-      const color = seriesColors[idx % seriesColors.length];
-      return { key, label: meta.label, color };
-    });
-  }, [selectedKeys]);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
 
-  const chartConfig = useMemo(() => {
-    const entries = selectedSeries.map((s) => [
-      s.key,
-      { label: s.label, color: s.color },
-    ]);
-    return Object.fromEntries(entries) as ChartConfig;
-  }, [selectedSeries]);
+    if (min === max) return [Math.floor(min - 10), Math.ceil(max + 10)];
 
-  const chartData = useMemo(() => {
-    return filteredChartX.map((ts, i) => {
-      const item: Record<string, string | number> = { ts };
+    const padding = (max - min) * 0.1;
+    return [Math.floor(min - padding), Math.ceil(max + padding)];
+  }, [filteredChartData, selectedKeys]);
 
-      for (const s of selectedSeries) {
-        const base = baseRowDemo[s.key] ?? 0;
-        const { min, max } = seriesRange[s.key];
-        const seed = hashString(`${chartSeed}-${ts}-${s.key}`);
-        const rng = mulberry32(seed);
-        const t = i / Math.max(1, filteredChartX.length - 1);
-
-        const seasonal =
-          Math.sin((i + 1) / 3 + chartOffset) * 0.12 +
-          Math.cos((i + 1) / 7 + chartOffset) * 0.06;
-
-        const noise = (rng() - 0.5) * 0.18;
-        const trend = (t - 0.5) * 0.08;
-        const factor = 0.75 + seasonal + noise + trend;
-
-        const rawValue = base * factor;
-        const clampedValue = clamp(rawValue, min, max);
-
-        item[s.key] = Number(clampedValue.toFixed(2));
-      }
-
-      return item;
-    });
-  }, [filteredChartX, selectedSeries, chartSeed, chartOffset]);
-
-  const visibleChartData = useMemo(() => {
-    if (!brushRange) return chartData;
-
-    const [start, end] = brushRange;
-    const safeStart = Math.max(0, Math.min(start, end));
-    const safeEnd = Math.min(chartData.length - 1, Math.max(start, end));
-
-    return chartData.slice(safeStart, safeEnd + 1);
-  }, [brushRange, chartData]);
+  const xTickInterval = useMemo(() => {
+    if (filteredChartData.length <= 8) return 0;
+    return Math.ceil(filteredChartData.length / 8);
+  }, [filteredChartData.length]);
 
   const onToggle = (key: SeriesKey) => {
     setSelectedKeys((prev) => {
       const exists = prev.includes(key);
-      if (exists) return prev.filter((k) => k !== key);
+
+      if (exists) {
+        if (prev.length === 1) return prev;
+        return prev.filter((item) => item !== key);
+      }
+
       return [...prev, key];
     });
   };
 
-  const selectedCount = selectedKeys.length;
+  const TooltipContent = ({
+    active,
+    payload,
+    label,
+  }: {
+    active?: boolean;
+    payload?: Array<{ dataKey?: string; value?: number | string }>;
+    label?: number | string;
+  }) => {
+    if (!active || !payload?.length) return null;
 
-  const yTicks = useMemo(
-    () => Array.from({ length: 11 }, (_, i) => i * 10),
-    [],
-  );
+    const ts = typeof label === "number" ? label : Number(label);
 
-  const formatTs = (value: unknown) => {
-    const ts =
-      typeof value === "number"
-        ? value
-        : typeof value === "string"
-          ? Number(value)
-          : value instanceof Date
-            ? value.getTime()
-            : NaN;
+    
 
-    if (!Number.isFinite(ts)) return "--";
+    return (
+      <div className="grid min-w-44 gap-2 rounded-lg border border-border bg-background px-3 py-2 text-xs shadow-xl">
+        <div className="font-medium">
+          {Number.isFinite(ts) ? dayjs(ts).format("YYYY-MM-DD HH:mm:ss") : "--"}
+        </div>
 
-    const d = dayjs(ts);
-    return d.isValid() ? d.format("YYYY-MM-DD HH:mm") : "--";
+        <div className="space-y-1">
+          {payload.map((item, idx) => {
+            const key = String(item.dataKey ?? "");
+            const meta = selectedSeries.find((series) => series.key === key);
+
+            if (!meta) return null;
+
+            const value =
+              typeof item.value === "number"
+                ? item.value
+                : Number(item.value ?? NaN);
+
+            if (!Number.isFinite(value)) return null;
+
+            return (
+              <div key={`${key}-${idx}`} className="flex items-center gap-2">
+                <span
+                  className="inline-block h-2.5 w-2.5 rounded-full"
+                  style={{ backgroundColor: meta.color }}
+                />
+                <span className="text-muted-foreground">{meta.label}</span>
+                <span className="ml-auto font-mono font-medium tabular-nums text-foreground">
+                  {value}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
   };
 
+  const yTicks = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
   return (
-    <div className="h-screen">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <h4 className="font-semibold">Chart</h4>
-
-       
-          <div className="">
-            <DatePickerWithRange date={dateRange} setDate={setDateRange} />
+    <div className="h-screen overflow-hidden">
+      <div className="flex h-full flex-col px-4 py-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h4 className="truncate font-semibold">Device Detail Graph</h4>
+            <div className="text-xs text-muted-foreground">
+              Device Detail &gt; Graph
+            </div>
           </div>
-      </div>
-
-      <div className="mt-5 overflow-hidden border border-border bg-card text-sm">
-        <div className="flex items-center justify-between border-b bg-muted/60 px-3 py-2">
-          <span className="text-sm font-medium text-muted-foreground">
-            Line chart series selection
-          </span>
 
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
               className="h-8 px-3 text-xs"
-              onClick={() => setSelectedKeys(defaultSelectedKeys)}
+              onClick={() => setRefreshNonce((n) => n + 1)}
             >
-              Reset
+              <RefreshCcw className="mr-2 h-4 w-4" />
+              Refresh
             </Button>
 
-            <span className="text-xs text-muted-foreground">
-              Selected: {selectedCount}
-            </span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-3 text-xs"
+                >
+                  <Filter className="mr-2 h-4 w-4" />
+                  Filter
+                </Button>
+              </PopoverTrigger>
+
+              <PopoverContent className="w-auto p-3" align="end">
+                <Label className="text-xs font-medium text-muted-foreground">
+                  Date Range
+                </Label>
+
+                <div className="mt-3">
+                  <DatePickerWithRange date={dateRange} setDate={setDateRange} />
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
 
-        <div className="p-3">
-          <ScrollArea className="w-full whitespace-nowrap">
-            <div
-              className="scrollbar-thin scrollbar-track-gray-100 scrollbar-thumb-gray-300 flex flex-row items-center gap-4 overflow-x-auto whitespace-nowrap px-1 py-4"
-              style={{ scrollbarColor: "#d1d5db #f3f4f6" }}
-            >
-              {seriesMeta.map((s, idx) => {
-                const selected = selectedKeys.includes(s.key);
-                const color = seriesColors[idx % seriesColors.length];
+        <div className="mt-5 flex-1 overflow-hidden rounded-xl border border-border bg-card">
+          <div className="flex h-full flex-col">
+            <div className="flex items-center justify-between border-b bg-muted/50 px-3 py-2">
+              <span className="text-sm font-medium text-muted-foreground">
+                Line chart series selection
+              </span>
 
-                return (
-                  <button
-                    key={s.key}
-                    type="button"
-                    onClick={() => onToggle(s.key)}
-                    className="inline-block rounded-xl border border-border bg-card px-4 py-2 transition-all"
-                    style={{
-                      cursor: "pointer",
-                      outline: selected
-                        ? `2px solid ${color}`
-                        : "2px solid transparent",
-                      outlineOffset: 2,
-                    }}
-                    aria-label={`Toggle ${s.label}`}
-                  >
-                    <span
-                      className="mr-2 inline-block h-3 w-3 rounded-full"
-                      style={{ backgroundColor: color }}
-                    />
-                    <span className="font-medium text-gray-800 dark:text-gray-200">
-                      {s.label}
-                    </span>
-                  </button>
-                );
-              })}
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-3 text-xs"
+                  onClick={() => setSelectedKeys(defaultSelectedKeys)}
+                >
+                  Reset
+                </Button>
+
+                <span className="text-xs text-muted-foreground">
+                  Selected: {selectedCount}
+                </span>
+              </div>
             </div>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
 
-          <div className="mt-3 rounded-xl border border-border bg-muted/40 p-3">
-            <ChartContainer
-              config={chartConfig}
-              className="h-[340px] w-full"
-              id="chart-page"
-            >
-              <LineChart
-                accessibilityLayer
-                data={visibleChartData}
-                margin={{ left: 0, right: 12 }}
-              >
-                <CartesianGrid vertical={false} />
+            <div className="flex flex-1 flex-col overflow-hidden p-3">
+              <ScrollArea className="w-full whitespace-nowrap">
+                <div className="flex flex-row items-center gap-3 px-1 py-3">
+                  {seriesMeta.map((series, idx) => {
+                    const selected = selectedKeys.includes(series.key);
+                    const color = seriesColors[idx % seriesColors.length];
+
+                    return (
+                      <button
+                        key={series.key}
+                        type="button"
+                        onClick={() => onToggle(series.key)}
+                        className="inline-flex items-center rounded-xl border border-border bg-card px-4 py-2 text-sm transition-all"
+                        style={{
+                          outline: selected
+                            ? `2px solid ${color}`
+                            : "2px solid transparent",
+                          outlineOffset: 2,
+                        }}
+                      >
+                        <span
+                          className="mr-2 inline-block h-3 w-3 rounded-full"
+                          style={{ backgroundColor: color }}
+                        />
+                        <span className="font-medium text-gray-800 dark:text-gray-200">
+                          {series.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <ScrollBar orientation="horizontal" />
+              </ScrollArea>
+
+              <div className="mt-3 flex-1 overflow-hidden rounded-xl border border-border bg-muted/30 p-3">
+                <ChartContainer
+                  config={chartConfig}
+                  className="h-full w-full"
+                  id="device-detail-graph"
+                >
+                  <LineChart
+                    accessibilityLayer
+                    data={filteredChartData}
+                    margin={{ top: 10, right: 16, left: 6, bottom: 50 }}
+                  >
+                    <CartesianGrid strokeDasharray="2 2" vertical={false} />
 
                 <YAxis
-                  ticks={yTicks}
-                  tickLine={false}
-                  axisLine={false}
-                  tickMargin={6}
-                  domain={[0, 100]}
-                  allowDecimals={false}
-                />
+  tickLine={false}
+  axisLine={false}
+  tickMargin={8}
+  width={40}
+  domain={[0, 100]}
+  ticks={yTicks}
+  allowDecimals={false}
+/>
 
-                <XAxis
-                  dataKey="ts"
-                  tickLine={false}
-                  axisLine={false}
-                  tickMargin={8}
-                  minTickGap={32}
-                  tickFormatter={(value) => formatTs(value)}
-                />
-
-                <ChartTooltip
-                  content={
-                    <ChartTooltipContent
-                      className="w-[210px]"
-                      labelFormatter={(value) => formatTs(value)}
+                    <XAxis
+                      dataKey="ts"
+                      tickLine={false}
+                      axisLine={false}
+                      tickMargin={14}
+                      minTickGap={24}
+                      interval={xTickInterval}
+                      angle={-25}
+                      textAnchor="end"
+                      height={60}
+                      tickFormatter={(value) =>
+                        dayjs(Number(value)).format("MM-DD HH:mm")
+                      }
                     />
-                  }
-                />
 
-                {selectedSeries.map((s) => (
-                  <Line
-                    key={s.key}
-                    type="monotone"
-                    dataKey={s.key}
-                    stroke={`var(--color-${s.key})`}
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                ))}
-              </LineChart>
-            </ChartContainer>
+                    <Tooltip content={<TooltipContent />} />
+
+                    {selectedSeries.map((series) => (
+                      <Line
+                        key={series.key}
+                        type="monotone"
+                        dataKey={series.key}
+                        stroke={`var(--color-${series.key})`}
+                        strokeWidth={2}
+                        dot={false}
+                        connectNulls
+                        isAnimationActive={false}
+                      />
+                    ))}
+                  </LineChart>
+                </ChartContainer>
+              </div>
+            </div>
           </div>
-
-          {/* <div className="mt-4">
-            <Table className="w-full bg-card text-xs">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Series</TableHead>
-                  <TableHead className="text-center">Key</TableHead>
-                </TableRow>
-              </TableHeader>
-
-              <TableBody>
-                {selectedSeries.map((s) => (
-                  <TableRow key={s.key}>
-                    <TableCell>
-                      <span className="inline-flex items-center gap-2">
-                        <span
-                          className="inline-block h-2.5 w-2.5 rounded-full"
-                          style={{ backgroundColor: s.color }}
-                        />
-                        {s.label}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-center">{s.key}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div> */}
         </div>
       </div>
     </div>
