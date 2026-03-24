@@ -1,4 +1,3 @@
-import ChartPage from "@/features/chart";
 import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_authenticated/chart/$id")({
@@ -6,7 +5,6 @@ export const Route = createFileRoute("/_authenticated/chart/$id")({
 });
 
 function ChartIdPage() {
-  const { id } = Route.useParams();
-  return <ChartPage chartId={id} />;
+  return <div>This is chart id</div>
 }
 
