@@ -14,6 +14,7 @@ import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { useBoundStore } from "@/store/client/use-store";
 import { useLogin } from "@/store/server/login/mutation";
+import logo from "@/assets/rms.jpg"
 
 export const Route = createFileRoute("/(auth)/login/")({
   validateSearch: (search) => ({
@@ -49,7 +50,7 @@ function RouteComponent() {
   return (
     <div className=" grid grid-cols-2">
       <div className=" relative h-screen ">
-        <img src={""} alt="cover" className=" object-cover w-full h-full" />
+        <img src={logo} alt="cover" className=" object-cover w-full h-full" />
         <div
           style={{
             width: "100%",
