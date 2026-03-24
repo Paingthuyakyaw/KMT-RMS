@@ -2,14 +2,21 @@ import Axios from "axios"
 
 
 export const axios = Axios.create({
-    baseURL : import.meta.env.VITE_BASE_URL
+    baseURL : import.meta.env.VITE_BASE_URL,
+    headers : {
+      "db" : "klt_db",
+      "appkey" : "649d98ed",
+      "appsecret" : "0b8301b0"
+    }
 })
 
 
 axios.interceptors.request.use(
   (config) => { 
-    config.headers.token = `117cb7ed-ef5a-41c6-8eb1-6a9e8b897611`;
-    config.headers.db ="klt_db" ;
+    const authToken = localStorage.getItem("token");
+    if (authToken && !config.headers.token) {
+      config.headers.token = authToken;
+    }
     return config;
   },
   (error) => Promise.reject(error),
