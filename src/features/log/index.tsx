@@ -18,6 +18,7 @@ import {
   LOG_LEAF_COLUMN_KEYS,
   LogTable,
 } from "./components/table";
+import { useLog } from "@/store/server/log/query";
 
 export function LogComponent() {
   const [deviceQuery, setDeviceQuery] = useState("");
@@ -29,6 +30,12 @@ export function LogComponent() {
   const [downloadDate, setDownloadDate] = useState<DateRange | undefined>({
     from: dayjs().startOf("day").toDate(),
     to: dayjs().endOf("day").toDate(),
+  });
+
+  const {data} = useLog({
+    device_id : "503",
+    from_date : "2026-03-25",
+    to_date : "2026-03-25"
   });
 
   const deviceOptions = useMemo(
@@ -57,6 +64,9 @@ export function LogComponent() {
       })),
     [],
   );
+
+  console.log(data);
+  
 
   return (
     <div className="h-screen">

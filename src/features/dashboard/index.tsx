@@ -29,7 +29,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Filter, Maximize2, Minimize2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   useMappingStore,
   getDisplayValue,
@@ -39,64 +39,13 @@ import {
   MultiSelectFilterDropdown,
   type MultiSelectOption,
 } from "@/components/multi-select-filter-dropdown";
+import {
+  useDeviceDetailInfinite,
+  type DeviceDetailInfiniteFilters,
+} from "@/store/server/dashboard/mutation";
 // Line chart modal extracted to dedicated chart page route
 
-type Row = Record<string, string | number>;
-
-// simple fake rows – some with powerModel 50 so mapping rules can show e.g. ****
-const rows: Row[] = Array.from({ length: 50 }, (_, i) => {
-  const powerSources = [
-    "Site On Grid",
-    "Site On DG",
-    "Site On BB",
-    "Site On Solar",
-  ];
-  const modes = ["Manual", "Auto", "Stop"];
-
-  return {
-    siteId: `YN${5400 + i}`,
-    viewDetail: "View",
-    lastUpdateTime: "2026-03-09 15:30",
-    siteStatus: i % 2 === 0 ? "Online" : "Offline",
-    dgStatus: "OFF",
-    cabinetStatus: "OK",
-    batteryStatus: "OK",
-    solarStatus: "OK",
-    ioCardStatus: "OK",
-    powerModel: i % 5 === 0 ? 50 : "Hybrid",
-    powerSource: powerSources[i % powerSources.length],
-    dgControllerMode: modes[i % modes.length],
-
-    // Demo numeric values for "View Detail" chart
-    roomTemp: 22 + (i % 10) * 0.35,
-    battVoltage: 48 + Math.sin(i / 4) * 0.8,
-    battCurrent: 10 + (i % 7) * 0.55,
-    soc: 45 + (i % 35),
-
-    tenant2Load: 0.6 + (i % 10) * 0.06,
-    engineFQ: 49.8 + (i % 6) * 0.05,
-
-    gensetL1V: 396 + (i % 8) * 0.55,
-    gensetL2V: 398 + (i % 8) * 0.45,
-    gensetL3V: 400 + (i % 8) * 0.35,
-
-    gensetL1A: 10 + (i % 6) * 0.35,
-    gensetL2A: 9.5 + (i % 6) * 0.4,
-    gensetL3A: 9.8 + (i % 6) * 0.32,
-
-    gridFQ: 50 + (i % 7) * 0.01,
-    gridL1V: 401 + (i % 8) * 0.35,
-    gridL2V: 399 + (i % 8) * 0.42,
-    gridL3V: 402 + (i % 8) * 0.28,
-
-    pv1Input: 205 + (i % 12) * 0.25,
-    pv2Input: 207 + (i % 12) * 0.23,
-    pv3Input: 209 + (i % 12) * 0.21,
-    pv4Input: 211 + (i % 12) * 0.19,
-
-    batteryBackup: 120 + (i % 80),
-  };
-});
+type Row = Record<string, string | number | undefined>;
 
 export const columnGroups = [
   {
@@ -321,73 +270,121 @@ const Dashboard = () => {
     tableExpanded: false,
   });
 
-  const [filters, setFilters] = useState<FilterState>({
+  const initialFilters: FilterState = {
     filterColumn: "siteId",
     filterQuery: "",
     powerSourceModels: [],
     powerSources: [],
     modes: [],
     statuses: [],
-  });
+  };
+
+  const [filters, setFilters] = useState<FilterState>(initialFilters);
+  const [activeFilters, setActiveFilters] = useState<FilterState>(initialFilters);
   const rules = useMappingStore((s: MappingState) => s.rules);
 
-  const filteredRows = rows.filter((row) => {
-    const {
-      filterColumn,
-      filterQuery,
-      powerSourceModels,
-      powerSources,
-      modes,
-      statuses,
-    } = filters;
-    // text / column filter
-    if (filterQuery) {
-      const value = row[filterColumn as keyof typeof row];
-      if (value === undefined || value === null) return false;
-      const matchesText = String(value)
-        .toLowerCase()
-        .includes(filterQuery.toLowerCase());
-      if (!matchesText) return false;
-    }
+  const apiFilters = useMemo<DeviceDetailInfiniteFilters>(() => {
+    const hasQuery = activeFilters.filterQuery.trim().length > 0;
+    const name =
+      activeFilters.filterColumn === "siteId" ? undefined : hasQuery ? activeFilters.filterQuery : undefined;
 
-    // Power Source Model multi-select filter
-    if (powerSourceModels.length > 0) {
-      const model = row.powerModel;
-      if (!powerSourceModels.includes(String(model))) {
-        return false;
-      }
-    }
+    return {
+      name,
+      status: activeFilters.statuses.length
+        ? activeFilters.statuses.join(",")
+        : undefined,
+      power_source_type: activeFilters.powerSourceModels.length
+        ? activeFilters.powerSourceModels.join(",")
+        : activeFilters.powerSources.length
+          ? activeFilters.powerSources.join(",")
+          : undefined,
+      // If user searches by `siteId`, backend supports `rms_device_id`
+      rms_device_id:
+        activeFilters.filterColumn === "siteId" && hasQuery ? activeFilters.filterQuery : undefined,
+    };
+  }, [activeFilters]);
 
-    // Power Source multi-select filter
-    if (powerSources.length > 0) {
-      const source = row.powerSource;
-      if (!powerSources.includes(String(source))) {
-        return false;
-      }
-    }
+  const scrollAreaWrapperRef = useRef<HTMLDivElement | null>(null);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const [stopOnError, setStopOnError] = useState(false);
 
-    // Mode multi-select filter (mapped to dgControllerMode)
-    if (modes.length > 0) {
-      const mode = (row as Row)["dgControllerMode"];
-      if (!modes.includes(String(mode))) {
-        return false;
-      }
-    }
+  const {
+    data: infiniteData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isError,
+  } = useDeviceDetailInfinite(apiFilters, 10);
 
-    // Status multi-select filter (mapped to siteStatus)
-    if (statuses.length > 0) {
-      const status = row.siteStatus;
-      if (!statuses.includes(String(status))) {
-        return false;
-      }
-    }
+  useEffect(() => {
+    // If filters change, allow fetching again.
+    setStopOnError(false);
+  }, [apiFilters]);
 
-    return true;
-  });
+  useEffect(() => {
+    if (isError) setStopOnError(true);
+  }, [isError]);
+
+  useEffect(() => {
+    const root =
+      scrollAreaWrapperRef.current?.querySelector(
+        '[data-slot="scroll-area-viewport"]',
+      ) as HTMLElement | null;
+
+    const sentinel = sentinelRef.current;
+    if (!root || !sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (!entry?.isIntersecting) return;
+
+        if (stopOnError) return;
+        if (!hasNextPage) return;
+        if (isFetchingNextPage) return;
+
+        fetchNextPage().catch(() => setStopOnError(true));
+      },
+      {
+        root,
+        rootMargin: "250px",
+      },
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage, stopOnError]);
+
+  const mappedRows: Row[] = useMemo(() => {
+    const pages = infiniteData?.pages ?? [];
+    const devices = pages.flatMap((p: any) => {
+      const list = p?.devices ?? p?.data ?? [];
+      return Array.isArray(list) ? list : [];
+    });
+
+    return devices.map((d: any) => {
+      const rmsId = d?.rms_device_id ?? d?.id ?? d?.device_id ?? d?.rms_name;
+      const siteId = rmsId !== undefined && rmsId !== null ? String(rmsId) : undefined;
+
+      const siteStatus =
+        typeof d?.status === "boolean" ? (d.status ? "Online" : "Offline") : undefined;
+
+      return {
+        siteId,
+        viewDetail: siteId ? "View" : undefined,
+        lastUpdateTime: d?.last_update_time ? String(d.last_update_time) : undefined,
+        siteStatus,
+        // Other table columns will stay blank if backend doesn't return those fields
+        powerSource: d?.power_source ?? d?.source_type ?? undefined,
+        powerModel: d?.source_type ?? undefined,
+      };
+    });
+  }, [infiniteData]);
 
   const tableContent = (
-    <ScrollArea className="h-full w-full whitespace-nowrap">
-      <div className="min-w-max">
+    <div ref={scrollAreaWrapperRef}>
+      <ScrollArea className="h-full w-full whitespace-nowrap">
+        <div className="min-w-max">
         <Table className="table w-max text-sm table-auto border-collapse bg-muted!">
           <TableHeader>
             {/* Group header row */}
@@ -425,8 +422,8 @@ const Dashboard = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredRows.map((row, rowIndex) => (
-              <TableRow key={rowIndex}>
+            {mappedRows.map((row, rowIndex) => (
+              <TableRow key={row.siteId ?? rowIndex}>
                 {columnGroups.flatMap((group) =>
                   group.columns.map((col) => (
                     <TableCell
@@ -446,53 +443,54 @@ const Dashboard = () => {
                           <span>
                             {getDisplayValue(
                               col.key,
-                              row[col.key as keyof typeof row],
+                              row[col.key as keyof typeof row] ?? "",
                               rules,
-                            ) ?? "-"}
+                            ) ?? ""}
                           </span>
-                          <Link
-                            to={`/chart/${rowIndex}` as any}
-                            
-                            className="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted/60"
-                            title="View chart page"
-                            aria-label="View chart page"
-                          >
-                            <svg
-                              viewBox="0 0 24 24"
-                              width="16"
-                              height="16"
-                              fill="none"
-                              xmlns="http://www.w3.org/2000/svg"
-                              aria-hidden="true"
+                          {row.siteId ? (
+                            <Link
+                              to={`/chart/${row.siteId}` as any}
+                              className="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                              title="View chart page"
+                              aria-label="View chart page"
                             >
-                              <path
-                                d="M4 19V5"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                              />
-                              <path
-                                d="M4 19H20"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                              />
-                              <path
-                                d="M7 15L11 11L13 13L18 8"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                            </svg>
-                          </Link>
+                              <svg
+                                viewBox="0 0 24 24"
+                                width="16"
+                                height="16"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                                aria-hidden="true"
+                              >
+                                <path
+                                  d="M4 19V5"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                />
+                                <path
+                                  d="M4 19H20"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                />
+                                <path
+                                  d="M7 15L11 11L13 13L18 8"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              </svg>
+                            </Link>
+                          ) : null}
                         </div>
                       ) : (
                         getDisplayValue(
                           col.key,
-                          row[col.key as keyof typeof row],
+                          row[col.key as keyof typeof row] ?? "",
                           rules,
-                        ) ?? "-"
+                        ) ?? ""
                       )}
                     </TableCell>
                   )),
@@ -501,10 +499,13 @@ const Dashboard = () => {
             ))}
           </TableBody>
         </Table>
-      </div>
-      <ScrollBar orientation="horizontal" />
-      <ScrollBar orientation="vertical" />
-    </ScrollArea>
+          {/* Infinite scroll sentinel */}
+          <div ref={sentinelRef} className="h-1 w-full" />
+        </div>
+        <ScrollBar orientation="horizontal" />
+        <ScrollBar orientation="vertical" />
+      </ScrollArea>
+    </div>
   );
 
   const filterControls = (
@@ -624,18 +625,17 @@ const Dashboard = () => {
                 size="sm"
                 className="h-7 px-3 text-xs"
                 onClick={() => {
-                  setFilters((prev) => ({
-                    ...prev,
-                    powerSourceModels: [],
-                    powerSources: [],
-                    modes: [],
-                    statuses: [],
-                  }));
+                  setFilters(initialFilters);
+                  setActiveFilters(initialFilters);
                 }}
               >
                 Reset
               </Button>
-              <Button size="sm" className="h-7 px-3 text-xs">
+              <Button
+                size="sm"
+                className="h-7 px-3 text-xs"
+                onClick={() => setActiveFilters(filters)}
+              >
                 Apply
               </Button>
             </div>
