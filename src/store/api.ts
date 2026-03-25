@@ -7,7 +7,7 @@ export const axios = Axios.create({
       "db" : "klt_db",
       "appkey" : "649d98ed",
       "appsecret" : "0b8301b0",
-      "token" : "98d72a42-80d4-4343-99bf-c126d848f050"
+      "token" : "4ff4a38c-dd58-4ef5-b7b5-984d14115511"
     }
 })
 
@@ -16,7 +16,7 @@ axios.interceptors.request.use(
   (config) => { 
     const authToken = localStorage.getItem("token");
     if (authToken && !config.headers.token) {
-      config.headers.token = "98d72a42-80d4-4343-99bf-c126d848f050";
+      config.headers.token = "4ff4a38c-dd58-4ef5-b7b5-984d14115511";
     }
     return config;
   },
