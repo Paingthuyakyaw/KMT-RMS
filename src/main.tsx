@@ -1,20 +1,13 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
-
 import "./index.css";
 import { routeTree } from "./routeTree.gen";
-import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
-import { MutationCache, QueryClient } from "@tanstack/react-query";
+import {  QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TooltipProvider } from "./components/ui/tooltip";
-import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { Toaster } from "./components/ui/sonner";
 import { ThemeProvider } from "./components/theme-provider";
-
-// query * mutation
-const persister = createAsyncStoragePersister({
-  storage: window.localStorage,
-});
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -24,8 +17,6 @@ const queryClient = new QueryClient({
       retry: 0,
     },
   },
-  // configure global cache callbacks to show toast notifications
-  mutationCache: new MutationCache({}),
 });
 
 // router ====
@@ -48,21 +39,16 @@ declare module "@tanstack/react-router" {
 const Router = () => {
   return (
     <ThemeProvider>
-      <PersistQueryClientProvider
-        persistOptions={{ persister }}
+      <QueryClientProvider    
         client={queryClient}
-        onSuccess={() => {
-          queryClient.resumePausedMutations().then(() => {
-            queryClient.invalidateQueries();
-          });
-        }}
+        
       >
         <TooltipProvider>
           <RouterProvider router={router} />
         </TooltipProvider>
+        <ReactQueryDevtools/>
         <Toaster position="top-right" />
-        {/* <ReactQueryDevtools /> */}
-      </PersistQueryClientProvider>
+      </QueryClientProvider>
     </ThemeProvider>
   );
 };

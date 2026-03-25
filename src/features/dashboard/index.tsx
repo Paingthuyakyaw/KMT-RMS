@@ -1,51 +1,22 @@
-import CardComponents from "@/features/dashboard/components/card";
+import CardComponents, {
+  type DashboardStatItem,
+} from "@/features/dashboard/components/card";
 import {
   mapStatsToDashboardItems,
-  sampleDashboardStats,
+  type DashboardStatsFromBackend,
 } from "@/features/dashboard/data/dashboard-stats";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
   Table,
   TableBody,
-  TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useDeviceDetailInfinite } from "@/store/server/dashboard/mutation";
+import { useInfiniteScrollObserver } from "@/hooks/use-infinite-scroll-observer";
 import { Link } from "@tanstack/react-router";
-import {
-  Combobox,
-  ComboboxContent,
-  ComboboxEmpty,
-  ComboboxInput,
-  ComboboxItem,
-  ComboboxList,
-} from "@/components/ui/combobox";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Filter, Maximize2, Minimize2 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  useMappingStore,
-  getDisplayValue,
-  type MappingState,
-} from "@/features/mapping/store";
-import {
-  MultiSelectFilterDropdown,
-  type MultiSelectOption,
-} from "@/components/multi-select-filter-dropdown";
-import {
-  useDeviceDetailInfinite,
-  type DeviceDetailInfiniteFilters,
-} from "@/store/server/dashboard/mutation";
-// Line chart modal extracted to dedicated chart page route
-
-type Row = Record<string, string | number | undefined>;
+import { useMemo, useRef } from "react";
+import { Spinner } from "@/components/ui/spinner";
 
 export const columnGroups = [
   {
@@ -111,11 +82,7 @@ export const columnGroups = [
     label: "DG Info",
     columns: [
       { key: "fuelLevel", label: "Fuel Level(L)", minWidth: "96px" },
-      {
-        key: "engineRunTime",
-        label: "Engine Run Time(Hrs)",
-        minWidth: "144px",
-      },
+      { key: "engineRunTime", label: "Engine Run Time(Hrs)", minWidth: "144px" },
       { key: "gensetEnergy", label: "Genset Energy(kWh)", minWidth: "132px" },
       {
         key: "dgControllerMode",
@@ -164,51 +131,15 @@ export const columnGroups = [
       { key: "pv2Current", label: "PV2 Current(A)", minWidth: "108px" },
       { key: "pv3Current", label: "PV3 Current(A)", minWidth: "108px" },
       { key: "pv4Current", label: "PV4 Current(A)", minWidth: "108px" },
-      {
-        key: "chargingCurrent",
-        label: "Charging Current (A)",
-        minWidth: "144px",
-      },
-      {
-        key: "solarOutputVolt",
-        label: "Solar Output Volt(V)",
-        minWidth: "144px",
-      },
-      {
-        key: "solarOutputAmps",
-        label: "Solar Output Amps (A)",
-        minWidth: "148px",
-      },
-      {
-        key: "dailyGeneratedEnergy",
-        label: "Daily Generated Energy (kWh)",
-        minWidth: "188px",
-      },
-      {
-        key: "monthlyGeneratedEnergy",
-        label: "Monthly Generated Energy(kWh)",
-        minWidth: "200px",
-      },
-      {
-        key: "totalGeneratedEnergy",
-        label: "Total Generated Energy(kWh)",
-        minWidth: "196px",
-      },
-      {
-        key: "dailyLoadEnergy",
-        label: "Daily Load Energy(kWh)",
-        minWidth: "162px",
-      },
-      {
-        key: "monthlyLoadEnergy",
-        label: "Monthly Load Energy(kWh)",
-        minWidth: "178px",
-      },
-      {
-        key: "totalLoadEnergy",
-        label: "Total Load Energy(kWh)",
-        minWidth: "174px",
-      },
+      { key: "chargingCurrent", label: "Charging Current (A)", minWidth: "144px" },
+      { key: "solarOutputVolt", label: "Solar Output Volt(V)", minWidth: "144px" },
+      { key: "solarOutputAmps", label: "Solar Output Amps (A)", minWidth: "148px" },
+      { key: "dailyGeneratedEnergy", label: "Daily Generated Energy (kWh)", minWidth: "188px" },
+      { key: "monthlyGeneratedEnergy", label: "Monthly Generated Energy(kWh)", minWidth: "200px" },
+      { key: "totalGeneratedEnergy", label: "Total Generated Energy(kWh)", minWidth: "196px" },
+      { key: "dailyLoadEnergy", label: "Daily Load Energy(kWh)", minWidth: "162px" },
+      { key: "monthlyLoadEnergy", label: "Monthly Load Energy(kWh)", minWidth: "178px" },
+      { key: "totalLoadEnergy", label: "Total Load Energy(kWh)", minWidth: "174px" },
     ],
   },
   {
@@ -222,550 +153,204 @@ export const columnGroups = [
   },
 ];
 
-const powerSourceModelOptions: MultiSelectOption[] = [
-  { label: "Grid + Battery", value: "Grid + Battery" },
-  { label: "DG + Battery", value: "DG + Battery" },
-  { label: "Grid + DG + Battery", value: "Grid + DG + Battery" },
-  { label: "Solar + Grid", value: "Solar + Grid" },
-  { label: "Solar + DG + Battery", value: "Solar + DG + Battery" },
-  { label: "Solar + Grid + Battery", value: "Solar + Grid + Battery" },
-];
-
-const powerSourceOptions: MultiSelectOption[] = [
-  { label: "Site On Grid", value: "Site On Grid" },
-  { label: "Site On DG", value: "Site On DG" },
-  { label: "Site On BB", value: "Site On BB" },
-  { label: "Site On Solar", value: "Site On Solar" },
-];
-
-const modeOptions: MultiSelectOption[] = [
-  { label: "Manual", value: "Manual" },
-  { label: "Auto", value: "Auto" },
-  { label: "Stop", value: "Stop" },
-];
-
-const statusOptions: MultiSelectOption[] = [
-  { label: "Online", value: "Online" },
-  { label: "Offline", value: "Offline" },
-];
-
-type FilterState = {
-  filterColumn: string;
-  filterQuery: string;
-  powerSourceModels: string[];
-  powerSources: string[];
-  modes: string[];
-  statuses: string[];
-};
-
-type ViewState = {
-  cardsExpanded: boolean;
-  tableExpanded: boolean;
-};
-
-const Dashboard = () => {
-  const stats = mapStatsToDashboardItems(sampleDashboardStats);
-  const [viewState, setViewState] = useState<ViewState>({
-    cardsExpanded: false,
-    tableExpanded: false,
-  });
-
-  const initialFilters: FilterState = {
-    filterColumn: "siteId",
-    filterQuery: "",
-    powerSourceModels: [],
-    powerSources: [],
-    modes: [],
-    statuses: [],
-  };
-
-  const [filters, setFilters] = useState<FilterState>(initialFilters);
-  const [activeFilters, setActiveFilters] = useState<FilterState>(initialFilters);
-  const rules = useMappingStore((s: MappingState) => s.rules);
-
-  const apiFilters = useMemo<DeviceDetailInfiniteFilters>(() => {
-    const hasQuery = activeFilters.filterQuery.trim().length > 0;
-    const name =
-      activeFilters.filterColumn === "siteId" ? undefined : hasQuery ? activeFilters.filterQuery : undefined;
-
-    return {
-      name,
-      status: activeFilters.statuses.length
-        ? activeFilters.statuses.join(",")
-        : undefined,
-      power_source_type: activeFilters.powerSourceModels.length
-        ? activeFilters.powerSourceModels.join(",")
-        : activeFilters.powerSources.length
-          ? activeFilters.powerSources.join(",")
-          : undefined,
-      // If user searches by `siteId`, backend supports `rms_device_id`
-      rms_device_id:
-        activeFilters.filterColumn === "siteId" && hasQuery ? activeFilters.filterQuery : undefined,
-    };
-  }, [activeFilters]);
-
-  const scrollAreaWrapperRef = useRef<HTMLDivElement | null>(null);
+export default function Dashboard() {
+  const scrollRootRef = useRef<HTMLDivElement | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
-  const [stopOnError, setStopOnError] = useState(false);
 
   const {
     data: infiniteData,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
+    isPending,
     isError,
-  } = useDeviceDetailInfinite(apiFilters, 10);
+  } = useDeviceDetailInfinite(undefined, 20);
 
-  useEffect(() => {
-    // If filters change, allow fetching again.
-    setStopOnError(false);
-  }, [apiFilters]);
+  useInfiniteScrollObserver({
+    rootRef: scrollRootRef,
+    targetRef: sentinelRef,
+    enabled: Boolean(hasNextPage) && !isError,
+    isLoading: Boolean(isFetchingNextPage),
+    onLoadMore: () => fetchNextPage(),
+    rootMargin: "250px",
+    threshold: 0.1,
+  });
 
-  useEffect(() => {
-    if (isError) setStopOnError(true);
-  }, [isError]);
-
-  useEffect(() => {
-    const root =
-      scrollAreaWrapperRef.current?.querySelector(
-        '[data-slot="scroll-area-viewport"]',
-      ) as HTMLElement | null;
-
-    const sentinel = sentinelRef.current;
-    if (!root || !sentinel) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-        if (!entry?.isIntersecting) return;
-
-        if (stopOnError) return;
-        if (!hasNextPage) return;
-        if (isFetchingNextPage) return;
-
-        fetchNextPage().catch(() => setStopOnError(true));
-      },
-      {
-        root,
-        rootMargin: "250px",
-      },
-    );
-
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [fetchNextPage, hasNextPage, isFetchingNextPage, stopOnError]);
-
-  const mappedRows: Row[] = useMemo(() => {
+  const devices = useMemo(() => {
     const pages = infiniteData?.pages ?? [];
-    const devices = pages.flatMap((p: any) => {
+    return pages.flatMap((p: any) => {
       const list = p?.devices ?? p?.data ?? [];
       return Array.isArray(list) ? list : [];
     });
-
-    return devices.map((d: any) => {
-      const rmsId = d?.rms_device_id ?? d?.id ?? d?.device_id ?? d?.rms_name;
-      const siteId = rmsId !== undefined && rmsId !== null ? String(rmsId) : undefined;
-
-      const siteStatus =
-        typeof d?.status === "boolean" ? (d.status ? "Online" : "Offline") : undefined;
-
-      return {
-        siteId,
-        viewDetail: siteId ? "View" : undefined,
-        lastUpdateTime: d?.last_update_time ? String(d.last_update_time) : undefined,
-        siteStatus,
-        // Other table columns will stay blank if backend doesn't return those fields
-        powerSource: d?.power_source ?? d?.source_type ?? undefined,
-        powerModel: d?.source_type ?? undefined,
-      };
-    });
   }, [infiniteData]);
 
-  const tableContent = (
-    <div ref={scrollAreaWrapperRef}>
-      <ScrollArea className="h-full w-full whitespace-nowrap">
-        <div className="min-w-max">
-        <Table className="table w-max text-sm table-auto border-collapse bg-muted!">
-          <TableHeader>
-            {/* Group header row */}
-            <TableRow className="sticky  top-0 z-30 border-0 bg-muted">
-              {columnGroups.map((group) => (
-                <TableHead
-                  key={group.label}
-                  colSpan={group.columns.length}
-                  className="border-r bg-[#94A3B8] dark:bg-muted text-stone-800 dark:text-stone-200 text-sm border-border  px-2 py-2.5 text-center  font-semibold tracking-tight "
-                >
-                  {group.label}
-                </TableHead>
-              ))}
-            </TableRow>
-            {/* Column header row */}
-            <TableRow className="sticky top-9 z-20 border-0 bg-muted">
-              {columnGroups.flatMap((group) =>
-                group.columns.map((col) => (
-                  <TableHead
-                    key={col.key}
-                    className={
-                      col.key === "siteId"
-                        ? "sticky left-0 z-20 border-border bg-muted px-2 py-2 text-sm font-medium"
-                        : "border-border bg-muted px-2 py-2 text-sm font-medium"
-                    }
-                    style={{
-                      minWidth: col.minWidth,
-                      boxSizing: "border-box",
-                    }}
-                  >
-                    {col.label}
-                  </TableHead>
-                )),
-              )}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {mappedRows.map((row, rowIndex) => (
-              <TableRow key={row.siteId ?? rowIndex}>
-                {columnGroups.flatMap((group) =>
-                  group.columns.map((col) => (
-                    <TableCell
-                      key={col.key}
-                      className={
-                        col.key === "siteId"
-                          ? "sticky left-0 z-10 bg-muted text-sm"
-                          : "text-sm"
-                      }
-                      style={{
-                        minWidth: col.minWidth,
-                        boxSizing: "border-box",
-                      }}
-                    >
-                      {col.key === "viewDetail" ? (
-                        <div className="flex flex-col items-start gap-1">
-                          <span>
-                            {getDisplayValue(
-                              col.key,
-                              row[col.key as keyof typeof row] ?? "",
-                              rules,
-                            ) ?? ""}
-                          </span>
-                          {row.siteId ? (
-                            <Link
-                              to={`/chart/${row.siteId}` as any}
-                              className="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted/60"
-                              title="View chart page"
-                              aria-label="View chart page"
-                            >
-                              <svg
-                                viewBox="0 0 24 24"
-                                width="16"
-                                height="16"
-                                fill="none"
-                                xmlns="http://www.w3.org/2000/svg"
-                                aria-hidden="true"
-                              >
-                                <path
-                                  d="M4 19V5"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                />
-                                <path
-                                  d="M4 19H20"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                />
-                                <path
-                                  d="M7 15L11 11L13 13L18 8"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                />
-                              </svg>
-                            </Link>
-                          ) : null}
-                        </div>
-                      ) : (
-                        getDisplayValue(
-                          col.key,
-                          row[col.key as keyof typeof row] ?? "",
-                          rules,
-                        ) ?? ""
-                      )}
-                    </TableCell>
-                  )),
-                )}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-          {/* Infinite scroll sentinel */}
-          <div ref={sentinelRef} className="h-1 w-full" />
-        </div>
-        <ScrollBar orientation="horizontal" />
-        <ScrollBar orientation="vertical" />
-      </ScrollArea>
-    </div>
+  const totalSites = useMemo(() => {
+    const first = infiniteData?.pages?.[0] as any | undefined;
+    const total = first?.device_detail_count;
+    return typeof total === "number" ? total : 0;
+  }, [infiniteData]);
+
+  const onlineCount = useMemo(
+    () => devices.filter((d: any) => d?.status === true).length,
+    [devices],
+  );
+  const offlineCount = useMemo(
+    () => devices.filter((d: any) => d?.status === false).length,
+    [devices],
   );
 
-  const filterControls = (
-    <div className="flex items-center gap-2">
-      <Combobox
-        items={columnGroups.flatMap((group) =>
-          group.columns.map((col) => col.key),
-        )}
-      >
-        <ComboboxInput
-          placeholder="Filter column"
-          aria-label="Filter column"
-          className="h-9 w-40"
-        />
-        <ComboboxContent>
-          <ComboboxEmpty>No columns found.</ComboboxEmpty>
-          <ComboboxList>
-            {(key) => {
-              const col = columnGroups
-                .flatMap((group) => group.columns)
-                .find((c) => c.key === key);
-              if (!col) return null;
-              return (
-                <ComboboxItem
-                  key={col.key}
-                  value={col.key}
-                  onClick={() =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      filterColumn: col.key,
-                    }))
-                  }
-                >
-                  {col.label}
-                </ComboboxItem>
-              );
-            }}
-          </ComboboxList>
-        </ComboboxContent>
-      </Combobox>
-      <Input
-        placeholder="Search…"
-        className="h-9 w-52"
-        value={filters.filterQuery}
-        onChange={(e) =>
-          setFilters((prev) => ({
-            ...prev,
-            filterQuery: e.target.value,
-          }))
-        }
-      />
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 gap-1 px-2 text-xs"
-          >
-            <Filter className="h-3.5 w-3.5" />
-            Filter
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-72 p-4" align="end" sideOffset={8}>
-          <div className="space-y-4">
-            <div className="text-sm font-semibold text-foreground">
-              Filter Options
-            </div>
-
-            <div className="space-y-3">
-              <MultiSelectFilterDropdown
-                label="Power Source Model"
-                placeholder="Choose Power Source Model"
-                options={powerSourceModelOptions}
-                values={filters.powerSourceModels}
-                onChange={(values) =>
-                  setFilters((prev) => ({
-                    ...prev, 
-                    powerSourceModels: values,
-                  }))
-                }
-              />
-              <MultiSelectFilterDropdown
-                label="Power Source"
-                placeholder="Choose Power Source"
-                options={powerSourceOptions}
-                values={filters.powerSources}
-                onChange={(values) =>
-                  setFilters((prev) => ({
-                    ...prev,
-                    powerSources: values,
-                  }))
-                }
-              />
-              <MultiSelectFilterDropdown
-                label="Mode"
-                placeholder="Choose Mode"
-                options={modeOptions}
-                values={filters.modes}
-                onChange={(values) =>
-                  setFilters((prev) => ({ ...prev, modes: values }))
-                }
-              />
-              <MultiSelectFilterDropdown
-                label="Status"
-                placeholder="Choose Device Status"
-                options={statusOptions}
-                values={filters.statuses}
-                onChange={(values) =>
-                  setFilters((prev) => ({ ...prev, statuses: values }))
-                }
-              />
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 px-3 text-xs"
-                onClick={() => {
-                  setFilters(initialFilters);
-                  setActiveFilters(initialFilters);
-                }}
-              >
-                Reset
-              </Button>
-              <Button
-                size="sm"
-                className="h-7 px-3 text-xs"
-                onClick={() => setActiveFilters(filters)}
-              >
-                Apply
-              </Button>
-            </div>
-          </div>
-        </PopoverContent>
-      </Popover>
-    </div>
-  );
+  const stats = useMemo(() => {
+    const apiStats: DashboardStatsFromBackend = {
+      totalSites,
+      online: onlineCount,
+      offline: offlineCount,
+    };
+    return mapStatsToDashboardItems(apiStats) as DashboardStatItem[];
+  }, [totalSites, onlineCount, offlineCount]);
 
   return (
     <div>
       <h4 className="font-semibold">Dashboard</h4>
 
-      {/* cards row with expand */}
       <div className="mt-5">
         <div className="mb-2 flex items-center justify-between">
           <span className="text-sm font-medium text-muted-foreground">
             Stats
           </span>
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            className="text-muted-foreground hover:text-foreground"
-            onClick={() =>
-              setViewState((prev) => ({ ...prev, cardsExpanded: true }))
-            }
-            title="Full screen"
-            aria-label="Expand cards to full screen"
-          >
-            <Maximize2 className="h-3.5 w-3.5" />
-          </Button>
         </div>
         <CardComponents stats={stats} className="rounded-xl bg-card/40" />
       </div>
 
-      {/* table section with expand */}
-      <div className="mt-5 text-sm overflow-hidden border border-border bg-card ">
+      <div className="mt-5 text-sm overflow-hidden border border-border bg-card">
         <div className="flex items-center justify-between border-b bg-muted/60 px-3 py-2">
           <span className="text-sm font-medium text-muted-foreground">
             Site inventory table
           </span>
-          <div className="flex  items-center gap-2">
-            {filterControls}
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              className="text-muted-foreground hover:text-foreground"
-              onClick={() =>
-                setViewState((prev) => ({ ...prev, tableExpanded: true }))
-              }
-              title="Full screen"
-              aria-label="Expand table to full screen"
-            >
-              <Maximize2 className="h-3.5 w-3.5" />
-            </Button>
-          </div>
         </div>
-        <div className="h-130">{tableContent}</div>
-      </div>
 
-      {/* Full screen overlay - Cards */}
-      {viewState.cardsExpanded && (
-        <div
-          className="fixed inset-0 z-50 flex flex-col bg-background"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Cards full screen view"
-        >
-          <div className="flex shrink-0 items-center justify-between border-b bg-muted/60 px-4 py-2">
-            <span className="text-sm font-medium">Stats — Full screen</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-1.5"
-              onClick={() =>
-                setViewState((prev) => ({ ...prev, cardsExpanded: false }))
-              }
-              aria-label="Exit full screen"
-            >
-              <Minimize2 className="h-3.5 w-3.5" />
-              Exit full screen
-            </Button>
-          </div>
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-4">
-            <CardComponents
-              stats={stats}
-              fullScreen
-              className="h-full w-full rounded-xl bg-background"
-            />
-          </div>
-        </div>
-      )}
+        <div className="h-[520px]">
+          <div
+            ref={scrollRootRef}
+            className="h-full w-full overflow-auto whitespace-nowrap"
+          >
+            <div className="min-w-max">
+              <Table className="table w-max text-sm table-auto border-collapse bg-muted!">
+                <TableHeader>
+                  <TableRow className="sticky top-0 z-30 border-0 bg-muted">
+                    {columnGroups.map((group) => (
+                      <TableHead
+                        key={group.label}
+                        colSpan={group.columns.length}
+                        className="border-r bg-[#94A3B8] dark:bg-muted text-stone-800 dark:text-stone-200 text-sm border-border px-2 py-2.5 text-center font-semibold tracking-tight"
+                      >
+                        {group.label}
+                      </TableHead>
+                    ))}
+                  </TableRow>
 
-      {/* Full screen overlay - Table */}
-      {viewState.tableExpanded && (
-        <div
-          className="fixed inset-0 z-50 flex flex-col bg-background"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Table full screen view"
-        >
-          <div className="flex shrink-0 items-center justify-between border-b bg-muted/60 px-4 py-2">
-            <span className="text-sm font-medium">
-              Site inventory table — Full screen
-            </span>
-            <div className="flex items-center gap-2">
-              {filterControls}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-1.5"
-                onClick={() =>
-                  setViewState((prev) => ({ ...prev, tableExpanded: false }))
-                }
-                aria-label="Exit full screen"
-              >
-                <Minimize2 className="h-3.5 w-3.5" />
-                Exit full screen
-              </Button>
+                  <TableRow className="sticky top-9 z-20 border-0 bg-muted">
+                    {columnGroups.flatMap((group) =>
+                      group.columns.map((col) => (
+                        <TableHead
+                          key={col.key}
+                          className={
+                            col.key === "siteId"
+                              ? "sticky left-0 z-20 border-border bg-muted px-2 py-2 text-sm font-medium"
+                              : "border-border bg-muted px-2 py-2 text-sm font-medium"
+                          }
+                          style={{
+                            minWidth: col.minWidth,
+                            boxSizing: "border-box",
+                          }}
+                        >
+                          {col.label}
+                        </TableHead>
+                      )),
+                    )}
+                  </TableRow>
+                </TableHeader>
+
+                <TableBody>
+                  {devices.map((d: any, rowIndex: number) => {
+                    const rmsId =
+                      d?.rms_device_id ?? d?.id ?? d?.device_id ?? d?.rms_name;
+                    const siteId =
+                      rmsId !== undefined && rmsId !== null
+                        ? String(rmsId)
+                        : undefined;
+
+                    const siteStatus =
+                      typeof d?.status === "boolean"
+                        ? d.status
+                          ? "Online"
+                          : "Offline"
+                        : undefined;
+
+                    const row: Record<string, string | number | undefined> = {
+                      siteId,
+                      viewDetail: siteId ? "View" : undefined,
+                      lastUpdateTime: d?.last_update_time
+                        ? String(d.last_update_time)
+                        : undefined,
+                      siteStatus,
+                      powerSource: d?.power_source ?? d?.source_type ?? undefined,
+                      powerModel: d?.source_type ?? undefined,
+                    };
+
+                    const siteIdDigits = Number(
+                      String(siteId ?? "").replace(/\D/g, ""),
+                    );
+                    const chartId =
+                      Number.isFinite(siteIdDigits) && siteIdDigits % 2 === 0
+                        ? "2"
+                        : "1";
+
+                    return (
+                      <TableRow key={siteId ?? rowIndex}>
+                        {columnGroups.flatMap((group) =>
+                          group.columns.map((col) => (
+                            <td
+                              key={col.key}
+                              className={
+                                col.key === "siteId"
+                                  ? "sticky left-0 z-10 bg-muted px-2 py-2 text-sm border-border border"
+                                  : "px-2 py-2 text-sm border-border border"
+                              }
+                              style={{
+                                minWidth: col.minWidth,
+                                boxSizing: "border-box",
+                              }}
+                            >
+                              {col.key === "viewDetail" ? (
+                                siteId ? (
+                                  <Link
+                                    to="/chart/$id"
+                                    params={{ id: chartId }}
+                                    className="inline-flex items-center rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                                  >
+                                    View
+                                  </Link>
+                                ) : null
+                              ) : (
+                                (row[col.key] ?? "") as any
+                              )}
+                            </td>
+                          )),
+                        )}
+                      </TableRow>
+                    );
+                  })}
+                 
+                </TableBody>
+              </Table>
+              <div ref={sentinelRef} className="h-1.5 flex items-center  justify-start w-full">
+               <Spinner className=" dark:text-white text-black "/>
+              </div>
             </div>
           </div>
-          <div className="min-h-0 flex-1 overflow-hidden border-t">
-            {tableContent}
-          </div>
         </div>
-      )}
-
-      {/* Line chart is available in dedicated /chart page route */}
+      </div>
     </div>
   );
-};
+}
 
-export default Dashboard;
