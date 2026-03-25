@@ -162,7 +162,6 @@ export default function Dashboard() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-    isPending,
     isError,
   } = useDeviceDetailInfinite(undefined, 20);
 
