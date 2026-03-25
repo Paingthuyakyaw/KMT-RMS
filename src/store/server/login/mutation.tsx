@@ -39,6 +39,19 @@ const login = async (payload : payloadProps) => {
     return data
 }
 
+/** Parses common API shapes: `{ token }` or `{ data: { token } }`. */
+export function extractSessionToken(data: unknown): string | undefined {
+    if (!data || typeof data !== "object") return undefined
+    const o = data as Record<string, unknown>
+    if (typeof o.token === "string" && o.token.length > 0) return o.token
+    const nested = o.data
+    if (nested && typeof nested === "object") {
+        const t = (nested as Record<string, unknown>).token
+        if (typeof t === "string" && t.length > 0) return t
+    }
+    return undefined
+}
+
 export const useLogin = () => {
     return useMutation({
         mutationFn : (payload : payloadProps) => login(payload)

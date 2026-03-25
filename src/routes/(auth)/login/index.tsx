@@ -1,4 +1,4 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useForm } from "@tanstack/react-form";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import {
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { useBoundStore } from "@/store/client/use-store";
-import { useLogin } from "@/store/server/login/mutation";
+import { extractSessionToken, useLogin } from "@/store/server/login/mutation";
 import logo from "@/assets/rms.jpg"
 
 export const Route = createFileRoute("/(auth)/login/")({
@@ -34,7 +34,9 @@ const formSchema = z.object({
 });
 
 function RouteComponent() {
-  const login = useLogin();
+  const loginMutation = useLogin();
+  const navigate = useNavigate();
+  const search = Route.useSearch();
   const form = useForm({
     defaultValues: {
       email: "",
@@ -44,7 +46,14 @@ function RouteComponent() {
       onSubmit: formSchema,
     },
     onSubmit: async ({ value }) => {
-      login.mutate(value);
+      loginMutation.mutate(value, {
+        onSuccess: (data) => {
+          const token = extractSessionToken(data);
+          if (!token) return;
+          useBoundStore.getState().setAuth(token);
+          void navigate({ to: search.redirect });
+        },
+      });
     },
   });
   return (
@@ -153,7 +162,7 @@ function RouteComponent() {
                 type="submit"
                 className=" cursor-pointer w-full"
                 form="bug-report-form"
-                isPending={login.isPending}
+                isPending={loginMutation.isPending}
               >
                 Log In
               </Button>
