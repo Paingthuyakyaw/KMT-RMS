@@ -51,7 +51,7 @@ const toCell = (v: unknown): string | number => {
   return s === null ? "-" : s;
 };
 
-export function LogComponent({ deviceIdFromSearch }: { deviceIdFromSearch?: string }) {
+export function LogComponent({  }: { deviceIdFromSearch?: string }) {
   const [deviceValues, setDeviceValues] = useState<string[]>([]);
   const [date, setDate] = useState<DateRange | undefined>({
     from: dayjs().startOf("day").toDate(),
