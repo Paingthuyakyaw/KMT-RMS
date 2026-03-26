@@ -3,6 +3,12 @@ import { useEffect, useRef } from "react";
 type UseInfiniteScrollObserverArgs = {
   /** Scroll container element ref (root of IntersectionObserver). If omitted, viewport is used. */
   rootRef?: React.RefObject<HTMLElement | null>;
+  /**
+   * Prefer this when the scroll root mounts after first paint (e.g. Radix ScrollArea viewport).
+   * Ref-based `rootRef` is often still null on the observer's first effect run, so IO falls back to
+   * the window and infinite scroll never tracks the real scroll container.
+   */
+  rootElement?: HTMLElement | null;
   /** The sentinel element ref to observe. */
   targetRef: React.RefObject<Element | null>;
   /** Whether observer should trigger loading. */
@@ -23,6 +29,7 @@ type UseInfiniteScrollObserverArgs = {
  */
 export function useInfiniteScrollObserver({
   rootRef,
+  rootElement,
   targetRef,
   enabled,
   isLoading,
@@ -40,7 +47,7 @@ export function useInfiniteScrollObserver({
   useEffect(() => {
     if (!enabled) return;
 
-    const root = rootRef?.current ?? null;
+    const root = rootElement ?? rootRef?.current ?? null;
     const target = targetRef.current;
     if (!target) return;
 
@@ -68,6 +75,15 @@ export function useInfiniteScrollObserver({
 
     observer.observe(target);
     return () => observer.disconnect();
-  }, [enabled, isLoading, onLoadMore, rootMargin, rootRef, targetRef, threshold]);
+  }, [
+    enabled,
+    isLoading,
+    onLoadMore,
+    rootMargin,
+    rootElement,
+    rootRef,
+    targetRef,
+    threshold,
+  ]);
 }
 

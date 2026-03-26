@@ -28,10 +28,13 @@ const getApiConnectToken = async () => {
 
 const login = async (payload : payloadProps) => {
     const connectToken = await getApiConnectToken()
+    
+      const formData = new FormData();
+  formData.append("email", payload.email);
+  formData.append("password", payload.password);
 
-    const {data} = await axios.post(`api/v1/login` , payload , {
+    const {data} = await axios.post(`api/v1/login` , formData , {
         headers : {
-            "Content-Type" : "application/json",
             Accept : "application/json",
             token: connectToken
         }

@@ -1,5 +1,5 @@
 import { axios } from "@/store/api";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import type { deviceProps } from "./typed";
 
 export interface DeviceDetailPayload {
@@ -55,8 +55,10 @@ export const useDeviceDetailInfinite = (
       if (page * pageLimit >= total) return undefined;
       return nextPage;
     },
+    placeholderData : keepPreviousData,
     staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
     retry: false,
+    
   });
 };

@@ -12,10 +12,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useDeviceDetailInfinite } from "@/store/server/dashboard/mutation";
 import { useInfiniteScrollObserver } from "@/hooks/use-infinite-scroll-observer";
 import { Link } from "@tanstack/react-router";
-import { useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Spinner } from "@/components/ui/spinner";
 
 export const columnGroups = [
@@ -23,6 +24,7 @@ export const columnGroups = [
     label: "Site Info",
     columns: [
       { key: "siteId", label: "Site ID", minWidth: "72px" },
+      { key: "rms_name_label", label: "Rms Name", minWidth: "82px" },
       { key: "viewDetail", label: "View Detail", minWidth: "88px" },
       { key: "lastUpdateTime", label: "Last Update Time", minWidth: "136px" },
       { key: "siteStatus", label: "Site Status", minWidth: "88px" },
@@ -154,7 +156,10 @@ export const columnGroups = [
 ];
 
 export default function Dashboard() {
-  const scrollRootRef = useRef<HTMLDivElement | null>(null);
+  const [scrollRootEl, setScrollRootEl] = useState<HTMLDivElement | null>(null);
+  const setViewportRef = useCallback((node: HTMLDivElement | null) => {
+    setScrollRootEl(node);
+  }, []);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   const {
@@ -163,16 +168,34 @@ export default function Dashboard() {
     hasNextPage,
     isFetchingNextPage,
     isError,
-  } = useDeviceDetailInfinite(undefined, 20);
+  } = useDeviceDetailInfinite(undefined, 50);
+
+  // First page ပြီးသွားချိန်မှာ နောက်တစ်မျက်နှာ ကြို fetch — scroll အောက်မရောက်ခင် data အသင့်ဖြစ်အောင်
+  useEffect(() => {
+    if (!hasNextPage || isFetchingNextPage || isError) return;
+    if ((infiniteData?.pages?.length ?? 0) !== 1) return;
+    void fetchNextPage();
+  }, [
+    hasNextPage,
+    isFetchingNextPage,
+    isError,
+    infiniteData?.pages?.length,
+    fetchNextPage,
+  ]);
 
   useInfiniteScrollObserver({
-    rootRef: scrollRootRef,
+    rootElement: scrollRootEl,
     targetRef: sentinelRef,
-    enabled: Boolean(hasNextPage) && !isError,
+    enabled:
+      Boolean(hasNextPage) &&
+      !isError &&
+      Boolean(scrollRootEl),
     isLoading: Boolean(isFetchingNextPage),
     onLoadMore: () => fetchNextPage(),
-    rootMargin: "250px",
-    threshold: 0.1,
+    // ScrollArea viewport ကို root အဖြစ် သုံးမှန်မှန်ဖြစ်ပြီးနောက် အောက်ဘက် ကြီးမားစွာ extend လုပ်ပြီး
+    // sentinel မမြင်ရသေးခင်နဲ့ နောက်တစ်မျက်နှာ ကြို load
+    rootMargin: "0px 0px 3500px 0px",
+    threshold: 0,
   });
 
   const devices = useMemo(() => {
@@ -228,9 +251,9 @@ export default function Dashboard() {
         </div>
 
         <div className="h-[520px]">
-          <div
-            ref={scrollRootRef}
-            className="h-full w-full overflow-auto whitespace-nowrap"
+          <ScrollArea
+            className="h-full w-full whitespace-nowrap"
+            viewportRef={setViewportRef}
           >
             <div className="min-w-max">
               <Table className="table w-max text-sm table-auto border-collapse bg-muted!">
@@ -272,7 +295,7 @@ export default function Dashboard() {
                 <TableBody>
                   {devices.map((d: any, rowIndex: number) => {
                     const rmsId =
-                      d?.rms_device_id ?? d?.id ?? d?.device_id ?? d?.rms_name;
+                      d?.name ?? d?.id 
                     const siteId =
                       rmsId !== undefined && rmsId !== null
                         ? String(rmsId)
@@ -285,16 +308,123 @@ export default function Dashboard() {
                           : "Offline"
                         : undefined;
 
+                    const jsonPoints: any[] = Array.isArray(d?.json) ? d.json : [];
+                    // API response က `json` ထဲမှာ { variableName, value, time } တွေ array နဲ့လာတတ်လို့
+                    // table columns (pv1Input, pv2Input, ...) အတွက် တန်ဖိုးတွေကို variableName ကနေ map ပြန်လုပ်မယ်။
+                    const latestByVariableName: Record<string, any> =
+                      jsonPoints.reduce((acc, p) => {
+                        const variableName = p?.variableName;
+                        if (!variableName) return acc;
+                        const prev = acc[variableName];
+                        const prevTime = typeof prev?.time === "number" ? prev.time : -Infinity;
+                        const nextTime = typeof p?.time === "number" ? p.time : -Infinity;
+                        acc[variableName] =
+                          prev === undefined || nextTime >= prevTime ? p : prev;
+                        return acc;
+                      }, {} as Record<string, any>);
+
+                    const normalizeValue = (
+                      v: unknown,
+                    ): string | number | undefined => {
+                      if (v === null || v === undefined) return undefined;
+                      if (typeof v === "number") return v;
+                      if (typeof v === "string") return v;
+                      if (Array.isArray(v)) {
+                        // တချို့ API တွေမှာ array ထဲက object { value: ... } အဖြစ် ပြန်လာနိုင်လို့
+                        // အနည်းဆုံး first item ကိုယူပေးမယ်။
+                        const first = v[0] as any;
+                        if (first && typeof first === "object" && "value" in first) {
+                          return normalizeValue((first as any).value);
+                        }
+                        return v.length ? String(v[0]) : undefined;
+                      }
+                      if (typeof v === "object") {
+                        const maybeValue = (v as any)?.value;
+                        if (maybeValue !== undefined) return normalizeValue(maybeValue);
+                      }
+                      return String(v);
+                    };
+
+                    const getLatestValue = (variableName: string) =>
+                      normalizeValue(latestByVariableName[variableName]?.value);
+
+                    const getLatestValueByRegex = (regex: RegExp) => {
+                      for (const [vn, p] of Object.entries(
+                        latestByVariableName,
+                      )) {
+                        if (regex.test(vn)) return normalizeValue(p?.value);
+                      }
+                      return undefined;
+                    };
+
                     const row: Record<string, string | number | undefined> = {
                       siteId,
+                      rms_name_label:
+                        d?.rms_name_label ?? d?.rms_name ?? d?.name ?? undefined,
                       viewDetail: siteId ? "View" : undefined,
                       lastUpdateTime: d?.last_update_time
                         ? String(d.last_update_time)
                         : undefined,
                       siteStatus,
-                      powerSource: d?.power_source ?? d?.source_type ?? undefined,
-                      powerModel: d?.source_type ?? undefined,
+                      powerModel: d?.source_type
+                              ? d.source_type
+                                  .split(",")
+                                  .map((s : any) => s.trim())
+                                  .map((s : any) => {
+                                    if (s === "solar") return "Solar";
+                                    if (s === "dg") return "DG";
+                                    if (s === "battery") return "Battery";
+                                    if(s === "grid") return "Grid"
+                                    return s;
+                                  })
+                                  .join(" + ")
+                              : undefined,
+                      powerSource: d?.powerSource ?? undefined,
+
+                      // --- Solar / PV metrics (variableName -> dashboard column key) ---
+                      pv1Input: getLatestValue("PV1_Input_Volt"),
+                      pv2Input: getLatestValue("PV2_Input_Volt"),
+                      pv3Input: getLatestValue("PV3_Input_Volt"),
+                      pv4Input: getLatestValue("PV4_Input_Volt"),
+
+                      pv1Current:
+                        getLatestValue("PV1_Current") ??
+                        getLatestValueByRegex(/^PV1_.*Input_.*(Amp|Curr|Current)$/i),
+                      pv2Current:
+                        getLatestValue("PV2_Current") ??
+                        getLatestValueByRegex(/^PV2_.*Input_.*(Amp|Curr|Current)$/i),
+                      pv3Current:
+                        getLatestValue("PV2_Current") ??
+                        getLatestValueByRegex(/^PV3_.*Input_.*(Amp|Curr|Current)$/i),
+                      pv4Current:
+                        getLatestValue("PV4_Current") ??
+                        getLatestValueByRegex(/^PV4_.*Input_.*(Amp|Curr|Current)$/i),
+                      
+                        battVoltage : getLatestValue("Battery_Voltage"),
+                        battCurrent : getLatestValue("Battery_Current"),
+                        roomTemp : getLatestValue("Room_Temp"),
+
+                      chargingCurrent: getLatestValue("Charging_Current") ?? getLatestValueByRegex(/^Charging_.*Current$/i),
+                      solarOutputVolt:
+                        getLatestValue("Solar_Output_Volt") ??
+                        getLatestValue("Solar_Output_Voltage") ??
+                        getLatestValueByRegex(/Solar_.*Output_.*Volt/i),
+                      solarOutputAmps:
+                        getLatestValue("Solar_Output_Amp") ??
+                        getLatestValue("Solar_Output_Amps") ??
+                        getLatestValue("Solar_Output_Current") ??
+                        getLatestValueByRegex(/Solar_.*Output_.*(Amp|Amps|Current)/i),
+
+                      dailyGeneratedEnergy: getLatestValueByRegex(/^Daily_Generated_Energy/i),
+                      monthlyGeneratedEnergy: getLatestValueByRegex(/^Monthly_Generated_Energy/i),
+                      totalGeneratedEnergy: getLatestValueByRegex(/^Total_Generated_Energy/i),
+
+                      dailyLoadEnergy: getLatestValueByRegex(/^Daily_Load_Energy/i),
+                      monthlyLoadEnergy: getLatestValueByRegex(/^Monthly_Load_Energy/i),
+                      totalLoadEnergy: getLatestValueByRegex(/^Total_Load_Energy/i),
                     };
+
+                    
 
                     const siteIdDigits = Number(
                       String(siteId ?? "").replace(/\D/g, ""),
@@ -342,11 +472,18 @@ export default function Dashboard() {
                  
                 </TableBody>
               </Table>
-              <div ref={sentinelRef} className="h-1.5 flex items-center  justify-start w-full">
-               <Spinner className=" dark:text-white text-black "/>
+              <div
+                ref={sentinelRef}
+                className="h-7.5 flex items-center justify-start w-full"
+              >
+                {isFetchingNextPage ? (
+                  <Spinner className=" dark:text-white text-black " />
+                ) : null}
               </div>
             </div>
-          </div>
+            <ScrollBar orientation="horizontal" />
+            <ScrollBar orientation="vertical" />
+          </ScrollArea>
         </div>
       </div>
     </div>
