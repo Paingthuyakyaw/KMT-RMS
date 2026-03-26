@@ -225,7 +225,7 @@ export const LOG_DEMO_ROWS: LogRow[] = [
 
 export function LogTable({ rows }: { rows: LogRow[] }) {
   return (
-    <ScrollArea className="h-full w-full whitespace-nowrap">
+    <ScrollArea className="h-[90vh] w-full whitespace-nowrap">
       <div className="min-w-max">
         <Table className="log-table bg-white w-max text-sm table-auto border-collapse dark:bg-muted">
           <TableHeader

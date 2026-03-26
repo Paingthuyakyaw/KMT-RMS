@@ -18,6 +18,7 @@ import { useInfiniteScrollObserver } from "@/hooks/use-infinite-scroll-observer"
 import { Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Spinner } from "@/components/ui/spinner";
+import { BarChart3Icon, EyeIcon } from "lucide-react";
 
 export const columnGroups = [
   {
@@ -26,6 +27,7 @@ export const columnGroups = [
       { key: "siteId", label: "Site ID", minWidth: "72px" },
       { key: "rms_name_label", label: "Rms Name", minWidth: "82px" },
       { key: "viewDetail", label: "View Detail", minWidth: "88px" },
+      { key: "logDetail", label: "Log Detail", minWidth: "88px" },
       { key: "lastUpdateTime", label: "Last Update Time", minWidth: "136px" },
       { key: "siteStatus", label: "Site Status", minWidth: "88px" },
       { key: "dgStatus", label: "DG", minWidth: "36px" },
@@ -148,7 +150,8 @@ export const columnGroups = [
     label: "System Generated Data",
     columns: [
       { key: "batteryBackup", label: "Battery Backup", minWidth: "108px" },
-      { key: "dailyRunTime", label: "Daily Run Time", minWidth: "108px" },
+      { key: "dailyDgRh", label: "Daily DG RH ", minWidth: "108px" },
+      {key : "dailyGridRh" , label : "Daily Grid RH" , minWidth : "108px"},
       { key: "cph", label: "CPH", minWidth: "42px" },
       { key: "lastActiveAlarm", label: "Last Active Alarm", minWidth: "128px" },
     ],
@@ -450,16 +453,30 @@ export default function Dashboard() {
                                 boxSizing: "border-box",
                               }}
                             >
-                              {col.key === "viewDetail" ? (
+                              {col.key === "logDetail" ? (
                                 siteId ? (
-                                  <Link
-                                    to="/chart/$id"
-                                    params={{ id: chartId }}
-                                    className="inline-flex items-center rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted/60"
-                                  >
-                                    View
-                                  </Link>
+                                  <div className="flex items-center justify-center gap-2">
+                                    <Link
+                                      to="/log"
+                                      className="inline-flex items-center justify-center rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                                      aria-label="View log"
+                                    >
+                                      <EyeIcon className="h-4 w-4" />
+                                    </Link>
+
+                                    <Link
+                                      to="/chart/$id"
+                                      params={{ id: chartId }}
+                                      className="inline-flex items-center justify-center rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                                      aria-label="View chart"
+                                    >
+                                      <BarChart3Icon className="h-4 w-4" />
+                                    </Link>
+                                  </div>
                                 ) : null
+                              ) : col.key === "viewDetail" ? (
+                                // viewDetail column ကိုဖယ်ထားတဲ့အတွက် ဒီ branch မဖြစ်သင့်ပေမယ့် fallback အဖြစ်ထားထားမယ်။
+                                null
                               ) : (
                                 (row[col.key] ?? "") as any
                               )}

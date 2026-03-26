@@ -4,8 +4,8 @@ import Axios from "axios"
 export const axios = Axios.create({
     baseURL : import.meta.env.VITE_BASE_URL,
     headers : {
-      "db" : "klt_db",
-      "appkey" : "649d98ed",
+      "db" : import.meta.env.VITE_DB,
+      "appkey" : import.meta.env.VITE_APP_KEY7,
       "appsecret" : "0b8301b0",
     }
 })
@@ -21,3 +21,20 @@ axios.interceptors.request.use(
   },
   (error) => Promise.reject(error),
 );
+
+// axios.interceptors.response.use(
+//   (response) => response,
+//   (error) => {
+//     const status = error.response?.status;
+//     const skipAuthRedirect = (error.config as { skipAuthRedirect?: boolean })
+//       ?.skipAuthRedirect;
+//     if (
+//       (status === 401 || status === 403) &&
+//       !skipAuthRedirect
+//     ) {
+//       localStorage.removeItem("token")
+//       window.location.href = "/login";
+//     }
+//     return Promise.reject(error);
+//   },
+// );

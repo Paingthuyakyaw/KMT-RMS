@@ -12,16 +12,46 @@ import type { DateRange } from "react-day-picker";
 import dayjs from "dayjs";
 import { Download, Filter } from "lucide-react";
 import { useMemo, useState } from "react";
-import { downloadCsv } from "@/lib/csv";
 import {
-  LOG_DEMO_ROWS,
-  LOG_LEAF_COLUMN_KEYS,
   LogTable,
+  type LogRow,
 } from "./components/table";
 import { useLog } from "@/store/server/log/query";
+import type { logProps } from "@/store/server/log/typed";
 
-export function LogComponent() {
-  const [deviceQuery, setDeviceQuery] = useState("");
+const extractScalar = (v: unknown): string | number | null => {
+  if (v === null || v === undefined) return null;
+  if (typeof v === "string") {
+    const trimmed = v.trim();
+    // Some backends return JSON encoded strings for values.
+    if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+      try {
+        return extractScalar(JSON.parse(trimmed));
+      } catch {
+        // Not a JSON string; fall through.
+      }
+    }
+    return v;
+  }
+  if (typeof v === "number") return v;
+  if (typeof v === "boolean") return v ? 1 : 0;
+  if (Array.isArray(v)) return extractScalar(v[0]);
+  if (typeof v === "object") {
+    const obj = v as Record<string, unknown>;
+    if ("value" in obj) return extractScalar(obj.value);
+    const keys = Object.keys(obj);
+    if (keys.length === 1) return extractScalar(obj[keys[0]]);
+    return JSON.stringify(obj);
+  }
+  return String(v);
+};
+
+const toCell = (v: unknown): string | number => {
+  const s = extractScalar(v);
+  return s === null ? "-" : s;
+};
+
+export function LogComponent({ deviceIdFromSearch }: { deviceIdFromSearch?: string }) {
   const [deviceValues, setDeviceValues] = useState<string[]>([]);
   const [date, setDate] = useState<DateRange | undefined>({
     from: dayjs().startOf("day").toDate(),
@@ -32,41 +62,114 @@ export function LogComponent() {
     to: dayjs().endOf("day").toDate(),
   });
 
-  const {data} = useLog({
-    device_id : "503",
-    from_date : "2026-03-25",
-    to_date : "2026-03-25"
+ 
+
+  const { data: apiLogs } = useLog({
+    from_date : date?.from
+      ? dayjs(date.from).format("YYYY-MM-DD")
+      : undefined,
+      to_date : date?.to ? dayjs(date.to).format("YYYY-MM-DD") : undefined,
+      device_id : "503"
   });
+
+  const mappedRows: LogRow[] = useMemo(() => {
+    const logs = (Array.isArray(apiLogs) ? apiLogs : []) as logProps[];
+    return logs.map((log) => {
+      return {
+        deviceName: String(extractScalar(log.device_id) ?? "-"),
+        lastUpdatedAt: String(
+          extractScalar(log.last_updated_at ?? log.last_time) ?? "-",
+        ),
+        sourceModel: String(""),
+        powerSource: String(
+           "",
+        ),
+        roomTemp: toCell(log.room_temp),
+        battVoltageV: toCell(log.batt_voltage_v),
+        battCurrentA: toCell(log.batt_current_a),
+        socPercent: toCell(log.soc),
+        rectifierCurrent: toCell(log.rectifier_current),
+
+        tenant1Load: toCell(log.tenant_1_a_value ?? log.tenant_1_a),
+        tenant1Power: toCell(log.tenant_1_w),
+        tenant2Load: toCell(log.tenant_2_a),
+        tenant2Power: toCell(log.tenant_2_w),
+        tenant3Load: toCell(log.tenant_3_a),
+        tenant3Power: toCell(log.tenant_3_w),
+        tenant4Load: toCell(log.tenant_4_a),
+        tenant4Power: toCell(log.tenant_4_w),
+
+        fuelLevelLiters: extractScalar(
+          log.fuel_level_litre ?? log.fuel_level_litre,
+        ) as string,
+        cph: toCell(log.cph),
+        dgrhHrs: toCell(log.dgrh_value ?? log.dgrh),
+        dailyDgrh: toCell(log.daily_dgrh),
+        gridRunTimeHrs: toCell(log.grid_run_time_hrs),
+        battRunTimeHrs: toCell(log.batt_run_time_hrs),
+        gensetKwh: toCell(log.gunset_kwh),
+        mode: toCell(log.mode ?? log.auto_mode),
+
+        gensetL1V: toCell(log.genset_l1_v),
+        gensetL2V: toCell(log.genset_l2_v),
+        gensetL3V: toCell(log.genset_l3_v),
+        gensetL1A: toCell(log.genset_l1_a),
+        gensetL2A: toCell(log.genset_l2_a),
+        gensetL3A: toCell(log.genset_l3_a),
+
+        dgbVoltage: toCell(log.dgb_voltage),
+        chargeVoltage: toCell(log.charge_voltage),
+        oilBar: toCell(log.oil_bar),
+        engineTemp: toCell(log.engine_temp),
+        engineFq: toCell(log.engine_fq),
+
+        gridL1V: toCell(log.grid_l1_v),
+        gridL2V: toCell(log.grid_l2_v),
+        gridL3V: toCell(log.grid_l3_v),
+        gridL1A: toCell(log.grid_l1_a),
+        gridL2A: toCell(log.grid_l2_a),
+        gridL3A: toCell(log.grid_l3_a),
+        gridFq: toCell(log.grid_fq),
+        gridKwh: toCell(log.grid_kwh),
+
+        pv1InputV: toCell(log.pv1_input_v),
+        pv2InputV: toCell(log.pv2_input_v),
+        pv3InputV: toCell(log.pv3_input_v),
+        pv4InputV: toCell(log.pv4_input_v),
+        pv1CurrentA: toCell(log.pv1_current),
+        pv2CurrentA: toCell(log.pv2_current),
+        pv3CurrentA: toCell(log.pv3_current),
+        pv4CurrentA: toCell(log.pv4_current),
+
+        batteryTempC: toCell(log.battery_temp),
+        chargingCurrentA: toCell(log.charging_current),
+        // battVoltage2: toCell(log.batt_voltage_v),
+        battVoltage2 : "",
+        loadCurrentA: toCell(log.load_current),
+
+        dailyGeneratedEnergyKwh: toCell(log.daily_generated_energy),
+        dailyGeneratedHourHrs: toCell(log.daily_generated_hour),
+        monthlyGeneratedEnergyKwh: toCell(log.monthly_generated_energy),
+        monthlyGeneratedHourHrs: toCell(log.monthly_generated_hour),
+        totalGeneratedEnergyKwh: toCell(log.total_generated_energy),
+
+        dailyLoadEnergyKwh: toCell(log.daily_load_energy),
+        monthlyLoadEnergyKwh: toCell(log.monthly_load_energy),
+        totalLoadEnergyKwh: toCell(log.total_load_energy),
+      }
+    })
+  }, [apiLogs])
 
   const deviceOptions = useMemo(
     () =>
-      Array.from(new Set(LOG_DEMO_ROWS.map((r) => String(r.deviceName)))).map(
+      Array.from(new Set(mappedRows.map((r) => String(r.deviceName)))).map(
         (v) => ({ label: v, value: v }),
       ),
-    [],
-  );
+    [mappedRows],
+  )
 
-  const filteredRows = useMemo(() => {
-    return LOG_DEMO_ROWS.filter((r) => {
-      const name = String(r.deviceName ?? "");
-      if (deviceQuery && !name.toLowerCase().includes(deviceQuery.toLowerCase()))
-        return false;
-      if (deviceValues.length > 0 && !deviceValues.includes(name)) return false;
-      return true;
-    });
-  }, [deviceQuery, deviceValues]);
 
-  const csvColumns = useMemo(
-    () =>
-      LOG_LEAF_COLUMN_KEYS.map((k) => ({
-        key: k,
-        label: k,
-      })),
-    [],
-  );
 
-  console.log(data);
-  
 
   return (
     <div className="h-screen">
@@ -101,8 +204,7 @@ export function LogComponent() {
                       <Label>Device Name</Label>
                       <Input
                         placeholder="Enter Device Name"
-                        value={deviceQuery}
-                        onChange={(e) => setDeviceQuery(e.target.value)}
+                     
                       />
                     </div>
 
@@ -125,10 +227,7 @@ export function LogComponent() {
                       variant="outline"
                       size="sm"
                       className="h-7 px-3 text-xs"
-                      onClick={() => {
-                        setDeviceQuery("");
-                        setDeviceValues([]);
-                      }}
+                     
                     >
                       Reset
                     </Button>
@@ -165,19 +264,8 @@ export function LogComponent() {
                       size="sm"
                       className="h-7 px-3 text-xs"
                       onClick={() => {
-                        const from =
-                          downloadDate?.from
-                            ? dayjs(downloadDate.from).format("YYYY-MM-DD")
-                            : "all";
-                        const to =
-                          downloadDate?.to
-                            ? dayjs(downloadDate.to).format("YYYY-MM-DD")
-                            : "all";
-                        downloadCsv({
-                          filename: `device-log_${from}_${to}.csv`,
-                          columns: csvColumns,
-                          rows: filteredRows,
-                        });
+                       
+                   
                       }}
                     >
                       Download
@@ -190,7 +278,7 @@ export function LogComponent() {
         </div>
 
         <div className="">
-          <LogTable rows={filteredRows} />
+          <LogTable rows={mappedRows} />
         </div>
       </div>
     </div>
