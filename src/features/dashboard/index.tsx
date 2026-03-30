@@ -185,7 +185,7 @@ export default function Dashboard() {
     power_source_type : filter.power_source_type,
     name : debounced,
     status : filter.status
-  }, 30);
+  }, 50);
 
   // First page ပြီးသွားချိန်မှာ နောက်တစ်မျက်နှာ ကြို fetch — scroll အောက်မရောက်ခင် data အသင့်ဖြစ်အောင်
   useEffect(() => {
