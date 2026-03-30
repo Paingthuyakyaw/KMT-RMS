@@ -46,19 +46,24 @@ export const useDeviceDetailInfinite = (
         page: pageParam ?? 1,
         limit,
       }),
-    getNextPageParam: (lastPage: deviceProps) => {
-      const nextPage = (lastPage?.page ?? 1) + 1;
-      const page = lastPage?.page ?? 1;
+    getNextPageParam: (lastPage: deviceProps, _allPages, lastPageParam) => {
+      const currentPage =
+        typeof lastPageParam === "number" ? lastPageParam : 1;
       const pageLimit = lastPage?.limit ?? limit;
       const total = lastPage?.device_detail_count ?? 0;
+      const devices = lastPage?.devices ?? [];
 
-      if (page * pageLimit >= total) return undefined;
-      return nextPage;
+      // ဖILTER/တချို့ response တွေမှာ `page` မပါတာကြောင့် client-side `lastPageParam` သုံးရမယ်။
+      // မဟုတ်ရင် `page` အမြဲ 1 လို့ ထင်ပြီး hasNextPage မသွားဘဲ fetch ထပ်ခေါ်နိုင်တယ်။
+      if (devices.length === 0) return undefined;
+      if (devices.length < pageLimit) return undefined;
+      if (total > 0 && currentPage * pageLimit >= total) return undefined;
+      return currentPage + 1;
     },
     placeholderData : keepPreviousData,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: true,
     retry: false,
-    
+    refetchInterval : 15000
   });
 };

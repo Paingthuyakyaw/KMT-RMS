@@ -16,9 +16,16 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useDeviceDetailInfinite } from "@/store/server/dashboard/mutation";
 import { useInfiniteScrollObserver } from "@/hooks/use-infinite-scroll-observer";
 import { Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Spinner } from "@/components/ui/spinner";
-import { BarChart3Icon, EyeIcon } from "lucide-react";
+import { BarChart3Icon, EyeIcon, Filter, Maximize2, Minimize2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import useDebounce from "@/hooks/use-debounce";
 
 export const columnGroups = [
   {
@@ -160,18 +167,25 @@ export const columnGroups = [
 
 export default function Dashboard() {
   const [scrollRootEl, setScrollRootEl] = useState<HTMLDivElement | null>(null);
-  const setViewportRef = useCallback((node: HTMLDivElement | null) => {
-    setScrollRootEl(node);
-  }, []);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
-
+  const [tableExpanded, setTableExpanded] = useState(false);
+  const [filter, setFilter] = useState({
+    siteId : "",
+    power_source_type : "" ,//model
+    status : ""
+  })
+  const {debounced} = useDebounce({value : filter.siteId})
   const {
     data: infiniteData,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
     isError,
-  } = useDeviceDetailInfinite(undefined, 50);
+  } = useDeviceDetailInfinite({
+    power_source_type : filter.power_source_type,
+    name : debounced,
+    status : filter.status
+  }, 30);
 
   // First page ပြီးသွားချိန်မှာ နောက်တစ်မျက်နှာ ကြို fetch — scroll အောက်မရောက်ခင် data အသင့်ဖြစ်အောင်
   useEffect(() => {
@@ -201,62 +215,177 @@ export default function Dashboard() {
     threshold: 0,
   });
 
-  const devices = useMemo(() => {
-    const pages = infiniteData?.pages ?? [];
-    return pages.flatMap((p: any) => {
-      const list = p?.devices ?? p?.data ?? [];
-      return Array.isArray(list) ? list : [];
-    });
-  }, [infiniteData]);
-
-  const totalSites = useMemo(() => {
-    const first = infiniteData?.pages?.[0] as any | undefined;
-    const total = first?.device_detail_count;
-    return typeof total === "number" ? total : 0;
-  }, [infiniteData]);
-
-  const onlineCount = useMemo(
-    () => devices.filter((d: any) => d?.status === true).length,
-    [devices],
-  );
-  const offlineCount = useMemo(
-    () => devices.filter((d: any) => d?.status === false).length,
-    [devices],
-  );
-
-  const stats = useMemo(() => {
-    const apiStats: DashboardStatsFromBackend = {
-      totalSites,
-      online: onlineCount,
-      offline: offlineCount,
-    };
-    return mapStatsToDashboardItems(apiStats) as DashboardStatItem[];
-  }, [totalSites, onlineCount, offlineCount]);
+  const pages = infiniteData?.pages ?? [];
+  const devices = pages.flatMap((p: any) => {
+    const list = p?.devices ?? p?.data ?? [];
+    return Array.isArray(list) ? list : [];
+  });
+  const firstPage = infiniteData?.pages?.[0] as any | undefined;
+  const totalSites =
+    typeof firstPage?.device_detail_count === "number"
+      ? firstPage.device_detail_count
+      : 0;
+  const onlineCount = devices.filter((d: any) => d?.status === true).length;
+  const offlineCount = devices.filter((d: any) => d?.status === false).length;
+  const stats = mapStatsToDashboardItems({
+    totalSites,
+    online: onlineCount,
+    offline: offlineCount,
+  } satisfies DashboardStatsFromBackend) as DashboardStatItem[];
 
   return (
-    <div>
-      <h4 className="font-semibold">Dashboard</h4>
+    <div
+      className={cn(
+        tableExpanded &&
+          "flex min-h-0 flex-col h-[calc(100dvh-6.25rem)]",
+      )}
+    >
+      {!tableExpanded ? (
+        <>
+          <h4 className="font-semibold">Dashboard</h4>
 
-      <div className="mt-5">
-        <div className="mb-2 flex items-center justify-between">
-          <span className="text-sm font-medium text-muted-foreground">
-            Stats
-          </span>
-        </div>
-        <CardComponents stats={stats} className="rounded-xl bg-card/40" />
-      </div>
+          <div className="mt-5">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-sm font-medium text-muted-foreground">
+                Stats
+              </span>
+            </div>
+            <CardComponents stats={stats} className="rounded-xl bg-card/40" />
+          </div>
+        </>
+      ) : null}
 
-      <div className="mt-5 text-sm overflow-hidden border border-border bg-card">
+      <div
+        className={cn(
+          "mt-5 text-sm overflow-hidden border border-border bg-card flex flex-col",
+          tableExpanded && "mt-0 min-h-0 flex-1",
+        )}
+      >
         <div className="flex items-center justify-between border-b bg-muted/60 px-3 py-2">
           <span className="text-sm font-medium text-muted-foreground">
-            Site inventory table
+            Site  table
           </span>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 px-2 text-xs"
+              aria-pressed={tableExpanded}
+              aria-label={
+                tableExpanded ? "Shrink site table height" : "Expand site table height"
+              }
+              title={tableExpanded ? "Table — smaller height" : "Table — larger height"}
+              onClick={() => setTableExpanded((v) => !v)}
+            >
+              {tableExpanded ? (
+                <Minimize2 className="h-3.5 w-3.5 shrink-0" />
+              ) : (
+                <Maximize2 className="h-3.5 w-3.5 shrink-0" />
+              )}
+              {tableExpanded ? "Shrink" : "Expand"}
+            </Button>
+             <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1 px-2 text-xs"
+              >
+                <Filter className="h-3.5 w-3.5" />
+                Filter
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72 p-4" align="end" sideOffset={8}>
+              <div className="space-y-4">
+                <div className="text-sm font-semibold text-foreground">
+                  Filter Options
+                </div>
+
+                <div className="space-y-5">
+                  <div className="space-y-2">
+                    <Label>Site ID</Label>
+                    <Input value={filter.siteId} onChange={(e) => setFilter(pre => ({...pre , siteId : e.target.value}))} placeholder="Enter Site ID" />
+                  </div>
+
+                  {/* project */}
+
+
+                  {/* power_source_model */}
+                <div className="space-y-2">
+                    <Label>Power Source Model </Label>
+                     <Select value={filter.power_source_type} onValueChange={val => setFilter(pre => ({...pre , power_source_type : val}))} >
+                    <SelectTrigger   className=" w-full ">
+                      <SelectValue  placeholder="Select Power Source" />
+                    </SelectTrigger>
+                    <SelectContent position="popper" >
+                      <SelectItem value="grid,battery" >Grid + Battery</SelectItem>
+                      <SelectItem value="dg,battery" >DG + Battery</SelectItem>
+                      <SelectItem value="grid,dg,battery" >Grid + DG + Battery</SelectItem>
+                      <SelectItem value="solar,grid" >Solar + Grid</SelectItem>
+                      <SelectItem value="solar,dg,battery" >Solar + DG + Battery</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  </div>
+
+                {/* power source */}
+                <div className=" space-y-2">
+                  <Label>Power Source</Label>
+                  <Select>
+                    <SelectTrigger className=" w-full ">
+                      <SelectValue  placeholder="Select Power Source" />
+                    </SelectTrigger>
+                    <SelectContent position="popper" >
+                      <SelectItem value="Site On Grid" >Site On Grid</SelectItem>
+                      <SelectItem value="Site On DG" >Site On DG</SelectItem>
+                      <SelectItem value="Site On BB" >Site On BB</SelectItem>
+                      <SelectItem value="Site On Solar" >Site On Solar</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* status */}
+                 <div className=" space-y-2">
+                  <Label>Status</Label>
+                  <Select value={filter.status} onValueChange={val => setFilter(pre => ({...pre , status : val}))} >
+                    <SelectTrigger className=" w-full ">
+                      <SelectValue  placeholder="Select Status" />
+                    </SelectTrigger>
+                    <SelectContent position="popper" >
+                      <SelectItem value="1" >Online</SelectItem>
+                      <SelectItem value="0" >Offline</SelectItem>         
+                    </SelectContent>
+                  </Select>
+                </div>
+                  
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-3 text-xs"
+                  >
+                    Reset
+                  </Button>
+                  <Button size="sm" className="h-7 px-3 text-xs">
+                    Apply
+                  </Button>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+          </div>
         </div>
 
-        <div className="h-[520px]">
+        <div
+          className={cn(
+            tableExpanded ? "min-h-0 flex-1" : "h-130",
+          )}
+        >
           <ScrollArea
             className="h-full w-full whitespace-nowrap"
-            viewportRef={setViewportRef}
+            viewportRef={(node) => setScrollRootEl(node)}
           >
             <div className="min-w-max">
               <Table className="table w-max text-sm table-auto border-collapse bg-muted!">
