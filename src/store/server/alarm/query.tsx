@@ -61,3 +61,35 @@ export const useMajorAlarm = (payload? : majorPayload) => {
         queryFn : () => majorAlarm(payload)
     })
 }
+
+
+const minorAlarm = async (payload ? : majorPayload ) : Promise<majorAlarmResponse> => {
+
+     const formData = buildFormData(payload || {});
+    const {data} = await axios.post(`api/v1/minor/alarm/list` , formData)
+    return data
+}
+
+
+export const useMinorAlarm = (payload? : majorPayload) => {
+    return useQuery({
+        queryKey : ["minor-alarm" , payload],
+        queryFn : () => minorAlarm(payload)
+    })
+}
+
+
+const criticalAlarm = async (payload ? : majorPayload ) : Promise<majorAlarmResponse> => {
+
+     const formData = buildFormData(payload || {});
+    const {data} = await axios.post(`api/v1/critical/alarm/list` , formData)
+    return data
+}
+
+
+export const useCriticalAlarm = (payload? : majorPayload) => {
+    return useQuery({
+        queryKey : ["critical-alarm" , payload],
+        queryFn : () => criticalAlarm(payload)
+    })
+}

@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
@@ -253,43 +254,45 @@ const MajorAlarm = () => {
           </div>
         </div>
 
-        <div className="border-b border-t grid grid-cols-9 gap-2 last:border-b-0">
-          <div className="border-r pl-2 py-2 ">Device Name</div>
-          <div className="border-r pl-2 py-2 ">Project Name</div>
-          <div className="border-r py-2 ">Trigger</div>
-          <div className="border-r py-2 col-span-3">Content</div>
-          <div className="border-r py-2">Alarm Status</div>
-          <div className="py-2 col-span-2 ">Alarm Time</div>
-        </div>
-
         <ScrollArea className={scrollClassName}>
-          {data?.alarms.map((item, idx) => (
-            <div
-              key={idx}
-              className="border-b grid grid-cols-9 gap-2 last:border-b-0"
-            >
-              <div className="border-r pl-2 py-2 ">
-                {item.device_name}
-              </div>
-               <div className="border-r pl-2 py-2 ">
-                {item.project_name}
-              </div>
-              <div className="border-r py-2 ">{item.trigger_name}</div>
-               <div className="border-r py-2 truncate col-span-3">{item.content}</div>
-              <div className="border-r py-2">
-                <Badge
-                  className={
-                    item.status === false
-                      ? "bg-green-600 hover:bg-green-600"
-                      : "bg-red-600 hover:bg-red-600"
-                  }
-                >
-                  {item.status ? "Alarm" : "Normal"}
-                </Badge>
-              </div>
-              <div className="py-2 col-span-2 ">{item.alarm_time ? dayjs(item.alarm_time).format("YYYY-MM-DD hh:mm:ss") : ""}</div>
-            </div>
-          ))}
+          <Table className="table-fixed w-full text-sm">
+            <TableHeader className="sticky top-0 z-10 bg-muted">
+              <TableRow>
+                <TableHead className="w-[11%] border-r">Device Name</TableHead>
+                <TableHead className="w-[11%] border-r">Project Name</TableHead>
+                <TableHead className="w-[16%] border-r">Trigger</TableHead>
+                <TableHead className="w-[30%] border-r">Content</TableHead>
+                <TableHead className="w-[10%] border-r">Alarm Status</TableHead>
+                <TableHead className="w-[22%]">Alarm Time</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data?.alarms.map((item, idx) => (
+                <TableRow key={idx}>
+                  <td className="border-r px-2 py-2">{item.device_name}</td>
+                  <td className="border-r px-2 py-2">{item.project_name}</td>
+                  <td className="border-r px-2 py-2">{item.trigger_name}</td>
+                  <td className="border-r px-2 py-2 truncate">{item.content || "-"}</td>
+                  <td className="border-r px-2 py-2">
+                    <Badge
+                      className={
+                        item.status === false
+                          ? "bg-green-600 hover:bg-green-600"
+                          : "bg-red-600 hover:bg-red-600"
+                      }
+                    >
+                      {item.status ? "Alarm" : "Normal"}
+                    </Badge>
+                  </td>
+                  <td className="px-2 py-2 whitespace-nowrap">
+                    {item.alarm_time
+                      ? dayjs(item.alarm_time).format("YYYY-MM-DD hh:mm:ss")
+                      : ""}
+                  </td>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </ScrollArea>
       </div>
     </div>
