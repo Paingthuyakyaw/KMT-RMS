@@ -5,7 +5,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useActiveAlarm } from "@/store/server/alarm/query";
+import { useProjectList } from "@/store/server/project/query";
 import dayjs from "dayjs";
 import { useState } from "react";
 import {
@@ -66,12 +74,16 @@ export default function ActiveAlarm() {
     alarm_type: string;
     device_name: string;
     from_date: string;
+    project_id: string;
   }>(() => ({
     alarm_type: "",
     device_name: "",
     from_date: today,
+    project_id: "",
   }));
   const [appliedFilter, setAppliedFilter] = useState(draftFilter);
+  const { data: projectData } = useProjectList({});
+  const projects = projectData?.projects ?? [];
 
   const { data } = useActiveAlarm(appliedFilter);
   const card: any = data;
@@ -83,6 +95,7 @@ export default function ActiveAlarm() {
       alarm_type: "",
       device_name: "",
       from_date: today,
+      project_id: "",
     };
     setDraftFilter(resetFilter);
     setAppliedFilter(resetFilter);
@@ -98,6 +111,10 @@ export default function ActiveAlarm() {
 
   return (
     <div className="flex h-screen flex-col min-h-0">
+      <h4 className="text-lg font-semibold tracking-tight shrink-0">
+        Active Alarm
+      </h4>
+
       {!tableExpanded ? (
         <div className="my-8 flex flex-wrap gap-3">
           {alarmSummary.map((item: any) => (
@@ -130,9 +147,7 @@ export default function ActiveAlarm() {
           tableExpanded ? "flex-1" : ""
         }`}
       >
-        <div className="flex items-center justify-between px-3 py-2">
-          <h4 className="text-sm font-semibold">Active Alarm</h4>
-
+        <div className="flex items-center justify-end px-3 py-2">
           <div className="flex items-center gap-2">
             <Popover>
               <PopoverTrigger asChild>
@@ -175,6 +190,31 @@ export default function ActiveAlarm() {
                           }))
                         }
                       />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Project</Label>
+                      <Select
+                        value={draftFilter.project_id || "all"}
+                        onValueChange={(val) =>
+                          setDraftFilter((pre) => ({
+                            ...pre,
+                            project_id: val === "all" ? "" : val,
+                          }))
+                        }
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="All projects" />
+                        </SelectTrigger>
+                        <SelectContent position="popper">
+                          <SelectItem value="all">All projects</SelectItem>
+                          {projects.map((p) => (
+                            <SelectItem key={p.id} value={String(p.id)}>
+                              {p.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
 
                     <div className="space-y-2">

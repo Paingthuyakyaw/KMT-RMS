@@ -13,10 +13,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { useDeviceDetailInfinite } from "@/store/server/dashboard/mutation";
+import {
+  useDeviceDetailInfinite,
+  type DeviceDetailInfiniteFilters,
+} from "@/store/server/dashboard/mutation";
 import { useInfiniteScrollObserver } from "@/hooks/use-infinite-scroll-observer";
 import { Link } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Spinner } from "@/components/ui/spinner";
 import { BarChart3Icon, EyeIcon, Filter, Maximize2, Minimize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -25,7 +28,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import useDebounce from "@/hooks/use-debounce";
+import { useProjectList } from "@/store/server/project/query";
 
 export const columnGroups = [
   {
@@ -169,23 +172,59 @@ export default function Dashboard() {
   const [scrollRootEl, setScrollRootEl] = useState<HTMLDivElement | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const [tableExpanded, setTableExpanded] = useState(false);
-  const [filter, setFilter] = useState({
-    siteId : "",
-    power_source_type : "" ,//model
-    status : ""
-  })
-  const {debounced} = useDebounce({value : filter.siteId})
+  const [draftFilter, setDraftFilter] = useState({
+    siteId: "",
+    power_source_type: "",
+    status: "",
+    project_id: "",
+  });
+  const [appliedFilter, setAppliedFilter] = useState({
+    siteId: "",
+    power_source_type: "",
+    status: "",
+    project_id: "",
+  });
+  const { data: projectData } = useProjectList({});
+  const projects = projectData?.projects ?? [];
+
+  const deviceListFilters = useMemo((): DeviceDetailInfiniteFilters => {
+    const next: DeviceDetailInfiniteFilters = {};
+    const siteId = appliedFilter.siteId.trim();
+    if (siteId) next.name = siteId;
+    if (appliedFilter.power_source_type)
+      next.power_source_type = appliedFilter.power_source_type;
+    if (appliedFilter.status) next.status = appliedFilter.status;
+    if (appliedFilter.project_id) next.project_id = appliedFilter.project_id;
+    return next;
+  }, [
+    appliedFilter.siteId,
+    appliedFilter.power_source_type,
+    appliedFilter.status,
+    appliedFilter.project_id,
+  ]);
+
+  const handleFilterReset = () => {
+    const reset = {
+      siteId: "",
+      power_source_type: "",
+      status: "",
+      project_id: "",
+    };
+    setDraftFilter({ ...reset });
+    setAppliedFilter({ ...reset });
+  };
+
+  const handleFilterApply = () => {
+    setAppliedFilter({ ...draftFilter });
+  };
+
   const {
     data: infiniteData,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
     isError,
-  } = useDeviceDetailInfinite({
-    power_source_type : filter.power_source_type,
-    name : debounced,
-    status : filter.status
-  }, 50);
+  } = useDeviceDetailInfinite(deviceListFilters, 50);
 
   // First page ပြီးသွားချိန်မှာ နောက်တစ်မျက်နှာ ကြို fetch — scroll အောက်မရောက်ခင် data အသင့်ဖြစ်အောင်
   useEffect(() => {
@@ -240,10 +279,10 @@ export default function Dashboard() {
           "flex min-h-0 flex-col h-[calc(100dvh-6.25rem)]",
       )}
     >
+      <h4 className="text-lg font-semibold tracking-tight">Dashboard</h4>
+
       {!tableExpanded ? (
         <>
-          <h4 className="font-semibold">Dashboard</h4>
-
           <div className="mt-5">
             <div className="mb-2 flex items-center justify-between">
               <span className="text-sm font-medium text-muted-foreground">
@@ -285,7 +324,11 @@ export default function Dashboard() {
               )}
               {tableExpanded ? "Shrink" : "Expand"}
             </Button>
-             <Popover>
+            <Popover
+              onOpenChange={(open) => {
+                if (open) setDraftFilter(appliedFilter);
+              }}
+            >
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
@@ -305,20 +348,60 @@ export default function Dashboard() {
                 <div className="space-y-5">
                   <div className="space-y-2">
                     <Label>Site ID</Label>
-                    <Input value={filter.siteId} onChange={(e) => setFilter(pre => ({...pre , siteId : e.target.value}))} placeholder="Enter Site ID" />
+                    <Input
+                      value={draftFilter.siteId}
+                      onChange={(e) =>
+                        setDraftFilter((pre) => ({
+                          ...pre,
+                          siteId: e.target.value,
+                        }))
+                      }
+                      placeholder="Enter Site ID"
+                    />
                   </div>
 
-                  {/* project */}
-
+                  <div className="space-y-2">
+                    <Label>Project</Label>
+                    <Select
+                      value={draftFilter.project_id || "all"}
+                      onValueChange={(val) =>
+                        setDraftFilter((pre) => ({
+                          ...pre,
+                          project_id: val === "all" ? "" : val,
+                        }))
+                      }
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="All projects" />
+                      </SelectTrigger>
+                      <SelectContent position="popper">
+                        <SelectItem value="all">All projects</SelectItem>
+                        {projects.map((p) => (
+                          <SelectItem key={p.id} value={String(p.id)}>
+                            {p.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
                   {/* power_source_model */}
                 <div className="space-y-2">
                     <Label>Power Source Model </Label>
-                     <Select value={filter.power_source_type} onValueChange={val => setFilter(pre => ({...pre , power_source_type : val}))} >
+                     <Select
+                      value={draftFilter.power_source_type || "all"}
+                      onValueChange={(val) =>
+                        setDraftFilter((pre) => ({
+                          ...pre,
+                          power_source_type: val === "all" ? "" : val,
+                        }))
+                      }
+                    >
                     <SelectTrigger   className=" w-full ">
                       <SelectValue  placeholder="Select Power Source" />
                     </SelectTrigger>
                     <SelectContent position="popper" >
+                      <SelectItem value="all">All models</SelectItem>
                       <SelectItem value="grid,battery" >Grid + Battery</SelectItem>
                       <SelectItem value="dg,battery" >DG + Battery</SelectItem>
                       <SelectItem value="grid,dg,battery" >Grid + DG + Battery</SelectItem>
@@ -347,11 +430,20 @@ export default function Dashboard() {
                 {/* status */}
                  <div className=" space-y-2">
                   <Label>Status</Label>
-                  <Select value={filter.status} onValueChange={val => setFilter(pre => ({...pre , status : val}))} >
+                  <Select
+                    value={draftFilter.status || "all"}
+                    onValueChange={(val) =>
+                      setDraftFilter((pre) => ({
+                        ...pre,
+                        status: val === "all" ? "" : val,
+                      }))
+                    }
+                  >
                     <SelectTrigger className=" w-full ">
                       <SelectValue  placeholder="Select Status" />
                     </SelectTrigger>
                     <SelectContent position="popper" >
+                      <SelectItem value="all">All</SelectItem>
                       <SelectItem value="1" >Online</SelectItem>
                       <SelectItem value="0" >Offline</SelectItem>         
                     </SelectContent>
@@ -362,13 +454,20 @@ export default function Dashboard() {
 
                 <div className="flex justify-end gap-2 pt-2">
                   <Button
+                    type="button"
                     variant="outline"
                     size="sm"
                     className="h-7 px-3 text-xs"
+                    onClick={handleFilterReset}
                   >
                     Reset
                   </Button>
-                  <Button size="sm" className="h-7 px-3 text-xs">
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="h-7 px-3 text-xs"
+                    onClick={handleFilterApply}
+                  >
                     Apply
                   </Button>
                 </div>
