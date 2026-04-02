@@ -1,23 +1,35 @@
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox";
 import { Label } from "@/components/ui/label";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { MultiSelectFilterDropdown } from "@/components/multi-select-filter-dropdown";
 import { DatePickerWithRange } from "@/components/date-range";
 import type { DateRange } from "react-day-picker";
 import dayjs from "dayjs";
 import { Download, Filter } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
+import useDebounce from "@/hooks/use-debounce";
+import { useDeviceListSearch } from "@/store/server/device/query";
+import { useLog, type LogQueryPayload } from "@/store/server/log/query";
 import {
   LogTable,
   type LogRow,
 } from "./components/table";
-import { useLog } from "@/store/server/log/query";
 import type { logProps } from "@/store/server/log/typed";
+import type { Device } from "@/store/server/dashboard/typed";
+import { Spinner } from "@/components/ui/spinner";
 
 const extractScalar = (v: unknown): string | number | null => {
   if (v === null || v === undefined) return null;
@@ -51,32 +63,129 @@ const toCell = (v: unknown): string | number => {
   return s === null ? "-" : s;
 };
 
-export function LogComponent({  }: { deviceIdFromSearch?: string }) {
-  const [deviceValues, setDeviceValues] = useState<string[]>([]);
-  const [date, setDate] = useState<DateRange | undefined>({
+function normalizeRmsId(raw?: string): string | undefined {
+  const t = raw?.trim().replace(/^["']|["']$/g, "");
+  return t || undefined;
+}
+
+function defaultDateRange(): DateRange {
+  return {
     from: dayjs().startOf("day").toDate(),
     to: dayjs().endOf("day").toDate(),
-  });
+  };
+}
+
+/** Minimal `Device` for combobox when URL has id + name but list is not loaded yet. */
+function deviceOptionStub(rms_device_id: number, name: string): Device {
+  return {
+    id: 0,
+    name,
+    device_id: 0,
+    rms_device_id,
+    last_active_alarm: "",
+    last_update_time: "",
+    source_type: "",
+    status: false,
+    alarm_status: false,
+    external_url: "",
+    access_device_url: false,
+    project_name: "",
+    power_source: "",
+    battery_backup_value: "",
+    rms_name: "",
+    rms_name_label: "",
+    json: [],
+  };
+}
+
+export function LogComponent({
+  rmsDeviceIdFromSearch,
+  deviceNameFromSearch,
+}: {
+  rmsDeviceIdFromSearch?: string;
+  deviceNameFromSearch?: string;
+}) {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [filterOpen, setFilterOpen] = useState(false);
+
+  /** Committed filters (drive `useLog` + table). Synced from URL when route search changes. */
+  const [appliedDate, setAppliedDate] = useState<DateRange | undefined>(
+    defaultDateRange,
+  );
+  const [appliedRmsId, setAppliedRmsId] = useState<string | undefined>(() =>
+    normalizeRmsId(rmsDeviceIdFromSearch),
+  );
+  const [appliedDeviceName, setAppliedDeviceName] = useState<
+    string | undefined
+  >(() => deviceNameFromSearch?.trim() || undefined);
+
+  /** Draft values edited inside the filter popover until Apply. */
+  const [date, setDate] = useState<DateRange | undefined>(defaultDateRange);
+  const [draftRmsId, setDraftRmsId] = useState<string | undefined>(undefined);
+  const [draftDeviceName, setDraftDeviceName] = useState<string | undefined>(
+    undefined,
+  );
+
   const [downloadDate, setDownloadDate] = useState<DateRange | undefined>({
     from: dayjs().startOf("day").toDate(),
     to: dayjs().endOf("day").toDate(),
   });
 
- 
-
-  const { data: apiLogs } = useLog({
-    from_date : date?.from
-      ? dayjs(date.from).format("YYYY-MM-DD")
-      : undefined,
-      to_date : date?.to ? dayjs(date.to).format("YYYY-MM-DD") : undefined,
-      device_id : "503"
+  const [deviceSearchInput, setDeviceSearchInput] = useState("");
+  const { debounced: debouncedDeviceName } = useDebounce({
+    value: deviceSearchInput,
   });
+  const { data: deviceSearchData, isFetching: deviceSearchLoading } =
+    useDeviceListSearch(
+      { name: debouncedDeviceName },
+      { enabled: filterOpen },
+    );
+
+  useEffect(() => {
+    setAppliedRmsId(normalizeRmsId(rmsDeviceIdFromSearch));
+    const name = deviceNameFromSearch?.trim();
+    setAppliedDeviceName(name || undefined);
+  }, [rmsDeviceIdFromSearch, deviceNameFromSearch]);
+
+  const deviceList = deviceSearchData?.devices ?? [];
+
+  const draftSelectedDevice = useMemo((): Device | null => {
+    const raw = draftRmsId?.trim();
+    if (!raw) return null;
+    const idStr = raw.replace(/^["']|["']$/g, "");
+    const idNum = Number(idStr);
+    if (!Number.isFinite(idNum)) return null;
+    const fromList = deviceList.find(
+      (d) => String(d.rms_device_id) === idStr,
+    );
+    if (fromList) return fromList;
+    const label = draftDeviceName?.trim() || idStr;
+    return deviceOptionStub(idNum, label);
+  }, [draftRmsId, draftDeviceName, deviceList]);
+
+  const logPayload: LogQueryPayload = useMemo(
+    () => ({
+      from_date: appliedDate?.from
+        ? dayjs(appliedDate.from).format("YYYY-MM-DD")
+        : undefined,
+      to_date: appliedDate?.to
+        ? dayjs(appliedDate.to).format("YYYY-MM-DD")
+        : undefined,
+      rms_device_id: normalizeRmsId(appliedRmsId),
+    }),
+    [appliedDate?.from, appliedDate?.to, appliedRmsId],
+  );
+
+  const { data: apiLogs } = useLog(logPayload, { page: 1, limit: 30 });
 
   const mappedRows: LogRow[] = useMemo(() => {
     const logs = (Array.isArray(apiLogs) ? apiLogs : []) as logProps[];
     return logs.map((log) => {
       return {
-        deviceName: String(extractScalar(log.device_id) ?? "-"),
+        deviceName: String(
+          extractScalar( appliedDeviceName ),
+        ),
         lastUpdatedAt: String(
           extractScalar(log.last_updated_at ?? log.last_time) ?? "-",
         ),
@@ -158,18 +267,7 @@ export function LogComponent({  }: { deviceIdFromSearch?: string }) {
         totalLoadEnergyKwh: toCell(log.total_load_energy),
       }
     })
-  }, [apiLogs])
-
-  const deviceOptions = useMemo(
-    () =>
-      Array.from(new Set(mappedRows.map((r) => String(r.deviceName)))).map(
-        (v) => ({ label: v, value: v }),
-      ),
-    [mappedRows],
-  )
-
-
-
+  }, [apiLogs, appliedDeviceName])
 
   return (
     <div className="h-screen">
@@ -182,7 +280,22 @@ export function LogComponent({  }: { deviceIdFromSearch?: string }) {
           </span>
 
           <div className="flex items-center gap-2">
-            <Popover>
+            <Popover
+              open={filterOpen}
+              onOpenChange={(open) => {
+                setFilterOpen(open);
+                if (open) {
+                  setDate(
+                    appliedDate
+                      ? { ...appliedDate }
+                      : defaultDateRange(),
+                  );
+                  setDraftRmsId(appliedRmsId);
+                  setDraftDeviceName(appliedDeviceName);
+                  setDeviceSearchInput(appliedDeviceName ?? "");
+                }
+              }}
+            >
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
@@ -193,45 +306,126 @@ export function LogComponent({  }: { deviceIdFromSearch?: string }) {
                   Filter
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-72 p-4" align="end" sideOffset={8}>
-                <div className="space-y-4">
-                  <div className="text-sm font-semibold text-foreground">
+              <PopoverContent
+                className="w-72 gap-0 p-3"
+                align="end"
+                sideOffset={8}
+              >
+                <div className="flex flex-col gap-2">
+                  <div className="text-sm font-semibold leading-none text-foreground">
                     Filter Options
                   </div>
 
-                  <div className="space-y-5">
-                    <div className="space-y-2">
-                      <Label>Device Name</Label>
-                      <Input
-                        placeholder="Enter Device Name"
-                     
+                  <div className="space-y-1.5">
+                    <Label className="text-sm" htmlFor="log-device-combobox">
+                      Device
+                    </Label>
+                    <Combobox
+                      filter={null}
+                      items={deviceList}
+                      value={draftSelectedDevice}
+                      itemToStringLabel={(d) => d.name}
+                      itemToStringValue={(d) => String(d.rms_device_id)}
+                      isItemEqualToValue={(a, b) =>
+                        a.rms_device_id === b.rms_device_id
+                      }
+                      inputValue={deviceSearchInput}
+                      onInputValueChange={(v) => setDeviceSearchInput(v)}
+                      onValueChange={(d) => {
+                        if (d == null) {
+                          setDraftRmsId(undefined);
+                          setDraftDeviceName(undefined);
+                          setDeviceSearchInput("");
+                          return;
+                        }
+                        setDraftRmsId(String(d.rms_device_id));
+                        setDraftDeviceName(d.name);
+                        setDeviceSearchInput(d.name);
+                      }}
+                    >
+                      <ComboboxInput
+                        id="log-device-combobox"
+                        placeholder="Search and select device"
+                        showClear
+                        className="w-full h-9 min-w-0"
                       />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Date Range</Label>
-                      <DatePickerWithRange date={date} setDate={setDate} />
-                    </div>
-
-                    <MultiSelectFilterDropdown
-                      label="Device List"
-                      placeholder="Select devices"
-                      options={deviceOptions}
-                      values={deviceValues}
-                      onChange={setDeviceValues}
-                    />
+                      <ComboboxContent className=" w-full ">
+                        {deviceSearchLoading ? (
+                          <div className="flex items-center justify-center gap-2 py-3 text-xs text-muted-foreground">
+                            <Spinner className="size-3.5" />
+                            Loading…
+                          </div>
+                        ) : (
+                          <>
+                            <ComboboxEmpty>
+                              {debouncedDeviceName.trim().length >= 1
+                                ? "No devices found."
+                                : "Type to search devices."}
+                            </ComboboxEmpty>
+                            <ComboboxList>
+                              {(device: Device) => (
+                                <ComboboxItem
+                                  key={device.rms_device_id}
+                                  value={device}
+                                >
+                                  {device.name}
+                                </ComboboxItem>
+                              )}
+                            </ComboboxList>
+                          </>
+                        )}
+                      </ComboboxContent>
+                    </Combobox>
                   </div>
 
-                  <div className="flex justify-end gap-2 pt-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">Date Range</Label>
+                    <DatePickerWithRange date={date} setDate={setDate} />
+                  </div>
+
+                  <div className="flex justify-end gap-2 border-t border-border/70 pt-2.5">
                     <Button
                       variant="outline"
                       size="sm"
                       className="h-7 px-3 text-xs"
-                     
+                      type="button"
+                      onClick={() => {
+                        const next = defaultDateRange();
+                        setDate(next);
+                        setDraftRmsId(undefined);
+                        setDraftDeviceName(undefined);
+                        setDeviceSearchInput("");
+                      }}
                     >
                       Reset
                     </Button>
-                    <Button size="sm" className="h-7 px-3 text-xs">
+                    <Button
+                      size="sm"
+                      className="h-7 px-3 text-xs"
+                      type="button"
+                      onClick={() => {
+                        setAppliedDate(date ? { ...date } : defaultDateRange());
+                        setAppliedRmsId(draftRmsId);
+                        setAppliedDeviceName(draftDeviceName);
+                        const rid = normalizeRmsId(draftRmsId);
+                        if (rid) {
+                          const dn = draftDeviceName?.trim();
+                          void navigate({
+                            to: "/log",
+                            search: {
+                              rms_device_id: rid,
+                              ...(dn ? { device_name: dn } : {}),
+                            },
+                          });
+                        } else {
+                          void navigate({ to: "/log", search: {} });
+                        }
+                        void queryClient.invalidateQueries({
+                          queryKey: ["log"],
+                        });
+                        setFilterOpen(false);
+                      }}
+                    >
                       Apply
                     </Button>
                   </div>

@@ -19,7 +19,7 @@ interface DatePickerWithRangeProps {
 export function DatePickerWithRange({ date, setDate }: DatePickerWithRangeProps) {
 
   return (
-    <Field className=" w-60">
+    <Field className=" w-full">
       <Popover>
         <PopoverTrigger asChild>
           <Button
