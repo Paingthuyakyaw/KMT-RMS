@@ -2,8 +2,9 @@ import CardComponents, {
   type DashboardStatItem,
 } from "@/features/dashboard/components/card";
 import {
+  mapCardInfoDaumToDashboardStats,
   mapStatsToDashboardItems,
-  type DashboardStatsFromBackend,
+  mergeCardInfoDataRows,
 } from "@/features/dashboard/data/dashboard-stats";
 import {
   Table,
@@ -17,6 +18,7 @@ import {
   useDeviceDetailInfinite,
   type DeviceDetailInfiniteFilters,
 } from "@/store/server/dashboard/mutation";
+import { useCardInfo } from "@/store/server/dashboard/query";
 import { useInfiniteScrollObserver } from "@/hooks/use-infinite-scroll-observer";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -203,6 +205,23 @@ export default function Dashboard() {
     appliedFilter.project_id,
   ]);
 
+  const cardInfoPayload = useMemo(() => {
+    const siteId = appliedFilter.siteId.trim();
+    return {
+      ...(siteId ? { name: siteId } : {}),
+      ...(appliedFilter.project_id
+        ? { project_id: appliedFilter.project_id }
+        : {}),
+      ...(appliedFilter.status ? { status: appliedFilter.status } : {}),
+    };
+  }, [
+    appliedFilter.siteId,
+    appliedFilter.project_id,
+    appliedFilter.status,
+  ]);
+
+  const { data: cardInfoResponse } = useCardInfo(cardInfoPayload);
+
   const handleFilterReset = () => {
     const reset = {
       siteId: "",
@@ -259,18 +278,10 @@ export default function Dashboard() {
     const list = p?.devices ?? p?.data ?? [];
     return Array.isArray(list) ? list : [];
   });
-  const firstPage = infiniteData?.pages?.[0] as any | undefined;
-  const totalSites =
-    typeof firstPage?.device_detail_count === "number"
-      ? firstPage.device_detail_count
-      : 0;
-  const onlineCount = devices.filter((d: any) => d?.status === true).length;
-  const offlineCount = devices.filter((d: any) => d?.status === false).length;
-  const stats = mapStatsToDashboardItems({
-    totalSites,
-    online: onlineCount,
-    offline: offlineCount,
-  } satisfies DashboardStatsFromBackend) as DashboardStatItem[];
+  const cardDaum = mergeCardInfoDataRows(cardInfoResponse?.data);
+  const stats = mapStatsToDashboardItems(
+    mapCardInfoDaumToDashboardStats(cardDaum),
+  ) as DashboardStatItem[];
 
   return (
     <div

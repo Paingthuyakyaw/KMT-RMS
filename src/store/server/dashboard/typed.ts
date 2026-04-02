@@ -38,3 +38,36 @@ export interface Json {
   cusdeviceName: string
   templateDataPointId?: number
 }
+
+
+/** `data` entries may each hold a single metric key (merged client-side). */
+export interface cardInfoResponse {
+  message: string
+  data: Daum[]
+}
+
+/** Master info card metrics (snake_case as returned by API). */
+export interface Daum {
+  user_id?: number
+  total_sites?: number
+  offline_count?: number
+  online_count?: number
+  dg_offline?: number
+  cabinet_offline?: number
+  solar_offline?: number
+  io_card_offline?: number
+  batt_low_alarm?: number
+  mains_fail?: number
+  high_dgrh_alarm?: number
+  major_alarm?: number
+  minor_alarm?: number
+  critical_alarm?: number
+  critical_site_alarm?: number
+  cabinet_door_alarm?: number
+  dg_door_alarm?: number
+  /** @deprecated Prefer cabinet_door_alarm; kept for older API payloads */
+  door_alarm?: number
+  auto_mode?: number
+  manual_mode?: number
+  stop_mode?: number
+}
