@@ -24,3 +24,20 @@ axios.interceptors.request.use(
   },
   (error) => Promise.reject(error),
 );
+
+axios.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error.response?.status;
+    const skipAuthRedirect = (error.config as { skipAuthRedirect?: boolean })
+      ?.skipAuthRedirect;
+    if (
+      (status === 401 || status === 403) &&
+      !skipAuthRedirect
+    ) {
+      localStorage.removeItem("token")
+      window.location.href = "/login";
+    }
+    return Promise.reject(error);
+  },
+);

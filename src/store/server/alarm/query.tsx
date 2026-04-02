@@ -93,3 +93,38 @@ export const useCriticalAlarm = (payload? : majorPayload) => {
         queryFn : () => criticalAlarm(payload)
     })
 }
+
+export interface TriggerListItem {
+    id: number
+    name: string
+    alarm_type?: string
+}
+
+export interface TriggerListResponse {
+    message?: string
+    triggers?: TriggerListItem[]
+    total?: number
+}
+
+export interface TriggerListPayload {
+    /** `alarm_type` (e.g. major_alarm/minor_alarm/critical_alarm) */
+    alarm_type?: string
+    /** Optional search by trigger name */
+    name?: string
+}
+
+const triggerList = async (payload?: TriggerListPayload): Promise<TriggerListResponse> => {
+    const formData = buildFormData(payload || {});
+    const { data } = await axios.post(`api/v1/trigger/list`, formData)
+    return data
+}
+
+export const useTriggerList = (payload?: TriggerListPayload) => {
+    const enabled = Boolean(payload?.alarm_type?.trim());
+    return useQuery({
+        queryKey: ["trigger-list", payload],
+        queryFn: () => triggerList(payload),
+        enabled,
+        staleTime: 30 * 1000,
+    })
+}

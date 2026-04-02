@@ -13,10 +13,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox";
 import { useMemo, useState } from "react";
 import dayjs from "dayjs";
 import { AlertTriangle, Filter, Maximize2, Minimize2 } from "lucide-react";
 import { useMajorAlarm } from "@/store/server/alarm/query";
+import { useTriggerList, type TriggerListItem } from "@/store/server/alarm/query";
 import { DatePicker } from "@/components/date-picker";
 import { useProjectList } from "@/store/server/project/query";
 
@@ -41,6 +50,22 @@ const MajorAlarm = () => {
   const [appliedFilter, setAppliedFilter] = useState(draftFilter);
   const { data: projectData } = useProjectList({});
   const projects = projectData?.projects ?? [];
+
+  const { data: triggerData } = useTriggerList({
+    alarm_type: "major_alarm",
+  });
+  const triggers = triggerData?.triggers ?? [];
+  const selectedTrigger = useMemo((): TriggerListItem | null => {
+    const v = draftFilter.trigger.trim();
+    if (!v) return null;
+    return (
+      triggers.find((t) => t.name === v) ?? {
+        id: 0,
+        name: v,
+        alarm_type: "major_alarm",
+      }
+    );
+  }, [draftFilter.trigger, triggers]);
 
   const { data } = useMajorAlarm({
     ...appliedFilter,
@@ -112,6 +137,20 @@ const MajorAlarm = () => {
                   variant="outline"
                   size="sm"
                   className="h-8 gap-1 px-2 text-xs"
+                    onClick={() => {
+                      if (
+                        typeof window === "undefined" ||
+                        typeof document === "undefined"
+                      )
+                        return;
+                      window.scrollTo({
+                        top: Math.max(
+                          document.documentElement.scrollHeight,
+                          document.body.scrollHeight,
+                        ),
+                        behavior: "smooth",
+                      });
+                    }}
                 >
                   <Filter className="h-3.5 w-3.5" />
                   Filter
@@ -165,16 +204,35 @@ const MajorAlarm = () => {
 
                     <div className="space-y-2">
                       <Label>Trigger Name</Label>
-                      <Input
-                        placeholder="Enter trigger name"
-                        value={draftFilter.trigger}
-                        onChange={(e) =>
+                      <Combobox
+                        items={triggers}
+                        value={selectedTrigger}
+                        itemToStringLabel={(t) => t.name}
+                        itemToStringValue={(t) => t.name}
+                        isItemEqualToValue={(a, b) => a.name === b.name}
+                        onValueChange={(t) => {
                           setDraftFilter((prev) => ({
                             ...prev,
-                            trigger: e.target.value,
-                          }))
-                        }
-                      />
+                            trigger: t?.name ?? "",
+                          }));
+                        }}
+                      >
+                        <ComboboxInput
+                          placeholder="Search and select trigger"
+                          showClear
+                          className="w-full min-w-0 h-9"
+                        />
+                        <ComboboxContent className="w-[var(--anchor-width)] min-w-[min(100%,18rem)]">
+                          <ComboboxEmpty>No triggers found.</ComboboxEmpty>
+                          <ComboboxList>
+                            {(t: TriggerListItem) => (
+                              <ComboboxItem key={t.id} value={t}>
+                                {t.name}
+                              </ComboboxItem>
+                            )}
+                          </ComboboxList>
+                        </ComboboxContent>
+                      </Combobox>
                     </div>
 
                     <div className="space-y-2">

@@ -301,6 +301,20 @@ export function LogComponent({
                   variant="outline"
                   size="sm"
                   className="h-8 gap-1 px-2 text-xs"
+                  onClick={() => {
+                    if (
+                      typeof window === "undefined" ||
+                      typeof document === "undefined"
+                    )
+                      return;
+                    window.scrollTo({
+                      top: Math.max(
+                        document.documentElement.scrollHeight,
+                        document.body.scrollHeight,
+                      ),
+                      behavior: "smooth",
+                    });
+                  }}
                 >
                   <Filter className="h-3.5 w-3.5" />
                   Filter
