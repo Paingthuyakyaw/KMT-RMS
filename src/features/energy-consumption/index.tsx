@@ -18,6 +18,7 @@ import {
 } from "@/lib/app-timezone";
 import { useTimezoneStore } from "@/store/client/timezone-store";
 import { downloadCsv } from "@/lib/csv";
+import { scrollWindowToBottom } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -246,6 +247,7 @@ export default function EnergyConsumption() {
                   variant="outline"
                   size="sm"
                   className="h-8 gap-1 px-2 text-xs"
+                  onClick={() => scrollWindowToBottom()}
                 >
                   <Filter className="h-3.5 w-3.5" />
                   Filter

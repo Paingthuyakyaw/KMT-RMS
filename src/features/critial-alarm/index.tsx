@@ -34,6 +34,7 @@ import {
 import { useTimezoneStore } from "@/store/client/timezone-store";
 import { Filter, Maximize2, Minimize2, OctagonAlert } from "lucide-react";
 import { DatePicker } from "@/components/date-picker";
+import { scrollWindowToBottom } from "@/lib/utils";
 import { useCriticalAlarm } from "@/store/server/alarm/query";
 import { useTriggerList, type TriggerListItem } from "@/store/server/alarm/query";
 import { useProjectList } from "@/store/server/project/query";
@@ -158,20 +159,7 @@ const CritialAlarm = () => {
                   variant="outline"
                   size="sm"
                   className="h-8 gap-1 px-2 text-xs"
-                  onClick={() => {
-                    if (
-                      typeof window === "undefined" ||
-                      typeof document === "undefined"
-                    )
-                      return;
-                    window.scrollTo({
-                      top: Math.max(
-                        document.documentElement.scrollHeight,
-                        document.body.scrollHeight,
-                      ),
-                      behavior: "smooth",
-                    });
-                  }}
+                    onClick={() => scrollWindowToBottom()}
                 >
                   <Filter className="h-3.5 w-3.5" />
                   Filter

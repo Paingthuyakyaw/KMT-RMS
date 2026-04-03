@@ -17,6 +17,7 @@ import { useProjectList } from "@/store/server/project/query";
 import { useEffect, useState } from "react";
 import { formatInstantInTz, todayYmdInTz } from "@/lib/app-timezone";
 import { useTimezoneStore } from "@/store/client/timezone-store";
+import { scrollWindowToBottom } from "@/lib/utils";
 import {
   AlertCircle,
   AlertTriangle,
@@ -165,6 +166,7 @@ export default function ActiveAlarm() {
                   variant="outline"
                   size="sm"
                   className="h-8 gap-1 px-2 text-xs"
+                  onClick={() => scrollWindowToBottom()}
                 >
                   <Filter className="h-3.5 w-3.5" />
                   Filter

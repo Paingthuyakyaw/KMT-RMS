@@ -18,6 +18,7 @@ import {
   type DashboardFilterState,
 } from "@/features/dashboard/types";
 import { Filter, Maximize2, Minimize2 } from "lucide-react";
+import { scrollWindowToBottom } from "@/lib/utils";
 import { useState } from "react";
 
 type ProjectOption = { id: string | number; name: string };
@@ -82,6 +83,7 @@ export function DashboardTableToolbar({
               variant="outline"
               size="sm"
               className="h-8 gap-1 px-2 text-xs"
+              onClick={() => scrollWindowToBottom()}
             >
               <Filter className="h-3.5 w-3.5" />
               Filter

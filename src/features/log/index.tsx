@@ -34,6 +34,7 @@ import {
 import type { logProps } from "@/store/server/log/typed";
 import type { Device } from "@/store/server/dashboard/typed";
 import { Spinner } from "@/components/ui/spinner";
+import { scrollWindowToBottom } from "@/lib/utils";
 
 const extractScalar = (v: unknown): string | number | null => {
   if (v === null || v === undefined) return null;
@@ -307,20 +308,7 @@ export function LogComponent({
                   variant="outline"
                   size="sm"
                   className="h-8 gap-1 px-2 text-xs"
-                  onClick={() => {
-                    if (
-                      typeof window === "undefined" ||
-                      typeof document === "undefined"
-                    )
-                      return;
-                    window.scrollTo({
-                      top: Math.max(
-                        document.documentElement.scrollHeight,
-                        document.body.scrollHeight,
-                      ),
-                      behavior: "smooth",
-                    });
-                  }}
+                  onClick={() => scrollWindowToBottom()}
                 >
                   <Filter className="h-3.5 w-3.5" />
                   Filter
