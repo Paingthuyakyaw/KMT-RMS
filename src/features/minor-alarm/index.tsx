@@ -21,8 +21,13 @@ import {
   ComboboxItem,
   ComboboxList,
 } from "@/components/ui/combobox";
-import { useMemo, useState } from "react";
-import dayjs from "dayjs";
+import { useEffect, useMemo, useState } from "react";
+import {
+  dateToApiYmd,
+  formatInstantInTz,
+  todayBoundsInTz,
+} from "@/lib/app-timezone";
+import { useTimezoneStore } from "@/store/client/timezone-store";
 import { AlertCircle, Filter, Maximize2, Minimize2 } from "lucide-react";
 import { useMinorAlarm } from "@/store/server/alarm/query";
 import { useTriggerList, type TriggerListItem } from "@/store/server/alarm/query";
@@ -30,7 +35,7 @@ import { DatePicker } from "@/components/date-picker";
 import { useProjectList } from "@/store/server/project/query";
 
 const MinorAlarm = () => {
-  const today = new Date();
+  const timeZoneId = useTimezoneStore((s) => s.timeZoneId);
   const [tableExpanded, setTableExpanded] = useState(false);
   const [draftFilter, setDraftFilter] = useState<{
     device_name: string;
@@ -39,15 +44,26 @@ const MinorAlarm = () => {
     project_id: string;
     from_date: Date | undefined;
     to_date: Date | undefined;
-  }>(() => ({
-    device_name: "",
-    status: "",
-    trigger: "",
-    project_id: "",
-    from_date: today,
-    to_date: today,
-  }));
+  }>(() => {
+    const { from, to } = todayBoundsInTz(useTimezoneStore.getState().timeZoneId);
+    return {
+      device_name: "",
+      status: "",
+      trigger: "",
+      project_id: "",
+      from_date: from,
+      to_date: to,
+    };
+  });
   const [appliedFilter, setAppliedFilter] = useState(draftFilter);
+
+  useEffect(() => {
+    const { from, to } = todayBoundsInTz(timeZoneId);
+    queueMicrotask(() => {
+      setDraftFilter((prev) => ({ ...prev, from_date: from, to_date: to }));
+      setAppliedFilter((prev) => ({ ...prev, from_date: from, to_date: to }));
+    });
+  }, [timeZoneId]);
   const { data: projectData } = useProjectList({});
   const projects = projectData?.projects ?? [];
 
@@ -69,35 +85,33 @@ const MinorAlarm = () => {
 
   const { data } = useMinorAlarm({
     ...appliedFilter,
-    from_date: appliedFilter.from_date
-      ? dayjs(appliedFilter.from_date).format("YYYY-MM-DD")
-      : undefined,
-    to_date: appliedFilter.to_date
-      ? dayjs(appliedFilter.to_date).format("YYYY-MM-DD")
-      : undefined,
+    from_date: dateToApiYmd(appliedFilter.from_date, timeZoneId),
+    to_date: dateToApiYmd(appliedFilter.to_date, timeZoneId),
   });
 
   const minorCount = useMemo(() => data?.alarm_counts || 0, [data?.alarm_counts]);
   const scrollClassName = tableExpanded ? "flex-1 min-h-0" : "h-[70vh]";
 
   const handleReset = () => {
+    const { from, to } = todayBoundsInTz(timeZoneId);
     const resetFilter = {
       device_name: "",
       status: "",
       trigger: "",
       project_id: "",
-      from_date: today,
-      to_date: today,
+      from_date: from,
+      to_date: to,
     };
     setDraftFilter(resetFilter);
     setAppliedFilter(resetFilter);
   };
 
   const handleApply = () => {
+    const { from, to } = todayBoundsInTz(timeZoneId);
     setAppliedFilter({
       ...draftFilter,
-      from_date: draftFilter.from_date || today,
-      to_date: draftFilter.to_date || today,
+      from_date: draftFilter.from_date || from,
+      to_date: draftFilter.to_date || to,
     });
   };
 
@@ -355,7 +369,11 @@ const MinorAlarm = () => {
                   </td>
                   <td className="px-2 py-2 whitespace-nowrap">
                     {item.alarm_time
-                      ? dayjs(item.alarm_time).format("YYYY-MM-DD hh:mm:ss")
+                      ? formatInstantInTz(
+                          item.alarm_time,
+                          timeZoneId,
+                          "YYYY-MM-DD HH:mm:ss",
+                        )
                       : ""}
                   </td>
                 </TableRow>

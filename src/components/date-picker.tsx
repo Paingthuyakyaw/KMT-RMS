@@ -1,5 +1,3 @@
-
-import { format } from "date-fns"
 import { ChevronDownIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -9,6 +7,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import dayjs from "@/lib/dayjs"
+import { normalizeTimeZoneId } from "@/lib/app-timezone"
+import { useTimezoneStore } from "@/store/client/timezone-store"
 
 interface dateProps{
     date: Date | undefined
@@ -16,6 +17,8 @@ interface dateProps{
 }
 
 export function DatePicker({date , setDate} : dateProps) {
+  const timeZoneId = useTimezoneStore((s) => s.timeZoneId)
+  const tz = normalizeTimeZoneId(timeZoneId)
 
   return (
     <Popover>
@@ -25,7 +28,7 @@ export function DatePicker({date , setDate} : dateProps) {
           data-empty={!date}
           className="w-full justify-between text-left font-normal data-[empty=true]:text-muted-foreground"
         >
-          {date ? format(date, "PPP") : <span>Pick a date</span>}
+          {date ? dayjs(date).tz(tz).format("MMM D, YYYY") : <span>Pick a date</span>}
           <ChevronDownIcon />
         </Button>
       </PopoverTrigger>

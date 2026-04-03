@@ -10,9 +10,13 @@ import {
 import { MultiSelectFilterDropdown } from "@/components/multi-select-filter-dropdown";
 import { DatePickerWithRange } from "@/components/date-range";
 import type { DateRange } from "react-day-picker";
-import dayjs from "dayjs";
 import { Download, Filter } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  civilYmdLocalCalendar,
+  defaultDateRangeInTz,
+} from "@/lib/app-timezone";
+import { useTimezoneStore } from "@/store/client/timezone-store";
 import { downloadCsv } from "@/lib/csv";
 import {
   Table,
@@ -184,16 +188,23 @@ const demoRows: EnergyRow[] = [
 ];
 
 export default function EnergyConsumption() {
+  const timeZoneId = useTimezoneStore((s) => s.timeZoneId);
   const [siteQuery, setSiteQuery] = useState("");
   const [siteValues, setSiteValues] = useState<string[]>([]);
-  const [date, setDate] = useState<DateRange | undefined>({
-    from: dayjs().startOf("day").toDate(),
-    to: dayjs().endOf("day").toDate(),
-  });
-  const [downloadDate, setDownloadDate] = useState<DateRange | undefined>({
-    from: dayjs().startOf("day").toDate(),
-    to: dayjs().endOf("day").toDate(),
-  });
+  const [date, setDate] = useState<DateRange | undefined>(() =>
+    defaultDateRangeInTz(useTimezoneStore.getState().timeZoneId),
+  );
+  const [downloadDate, setDownloadDate] = useState<DateRange | undefined>(() =>
+    defaultDateRangeInTz(useTimezoneStore.getState().timeZoneId),
+  );
+
+  useEffect(() => {
+    const next = defaultDateRangeInTz(timeZoneId);
+    queueMicrotask(() => {
+      setDate(next);
+      setDownloadDate(next);
+    });
+  }, [timeZoneId]);
 
   const siteOptions = useMemo(
     () =>
@@ -313,11 +324,11 @@ export default function EnergyConsumption() {
                       onClick={() => {
                         const from =
                           downloadDate?.from
-                            ? dayjs(downloadDate.from).format("YYYY-MM-DD")
+                            ? civilYmdLocalCalendar(downloadDate.from)
                             : "all";
                         const to =
                           downloadDate?.to
-                            ? dayjs(downloadDate.to).format("YYYY-MM-DD")
+                            ? civilYmdLocalCalendar(downloadDate.to)
                             : "all";
                         downloadCsv({
                           filename: `energy-consumption_${from}_${to}.csv`,

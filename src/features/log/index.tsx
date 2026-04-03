@@ -15,7 +15,11 @@ import {
 } from "@/components/ui/popover";
 import { DatePickerWithRange } from "@/components/date-range";
 import type { DateRange } from "react-day-picker";
-import dayjs from "dayjs";
+import { useTimezoneStore } from "@/store/client/timezone-store";
+import {
+  dateRangeToApiDates,
+  defaultDateRangeInTz,
+} from "@/lib/app-timezone";
 import { Download, Filter } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
@@ -69,10 +73,7 @@ function normalizeRmsId(raw?: string): string | undefined {
 }
 
 function defaultDateRange(): DateRange {
-  return {
-    from: dayjs().startOf("day").toDate(),
-    to: dayjs().endOf("day").toDate(),
-  };
+  return defaultDateRangeInTz(useTimezoneStore.getState().timeZoneId);
 }
 
 /** Minimal `Device` for combobox when URL has id + name but list is not loaded yet. */
@@ -127,10 +128,11 @@ export function LogComponent({
     undefined,
   );
 
-  const [downloadDate, setDownloadDate] = useState<DateRange | undefined>({
-    from: dayjs().startOf("day").toDate(),
-    to: dayjs().endOf("day").toDate(),
-  });
+  const timeZoneId = useTimezoneStore((s) => s.timeZoneId);
+
+  const [downloadDate, setDownloadDate] = useState<DateRange | undefined>(() =>
+    defaultDateRangeInTz(useTimezoneStore.getState().timeZoneId),
+  );
 
   const [deviceSearchInput, setDeviceSearchInput] = useState("");
   const { debounced: debouncedDeviceName } = useDebounce({
@@ -148,6 +150,11 @@ export function LogComponent({
     setAppliedDeviceName(name || undefined);
   }, [rmsDeviceIdFromSearch, deviceNameFromSearch]);
 
+  useEffect(() => {
+    const next = defaultDateRangeInTz(timeZoneId);
+    queueMicrotask(() => setDownloadDate(next));
+  }, [timeZoneId]);
+
   const deviceList = deviceSearchData?.devices ?? [];
 
   const draftSelectedDevice = useMemo((): Device | null => {
@@ -164,18 +171,17 @@ export function LogComponent({
     return deviceOptionStub(idNum, label);
   }, [draftRmsId, draftDeviceName, deviceList]);
 
-  const logPayload: LogQueryPayload = useMemo(
-    () => ({
-      from_date: appliedDate?.from
-        ? dayjs(appliedDate.from).format("YYYY-MM-DD")
-        : undefined,
-      to_date: appliedDate?.to
-        ? dayjs(appliedDate.to).format("YYYY-MM-DD")
-        : undefined,
+  const logPayload: LogQueryPayload = useMemo(() => {
+    const { from_date, to_date } = dateRangeToApiDates(
+      appliedDate,
+      timeZoneId,
+    );
+    return {
+      from_date,
+      to_date,
       rms_device_id: normalizeRmsId(appliedRmsId),
-    }),
-    [appliedDate?.from, appliedDate?.to, appliedRmsId],
-  );
+    };
+  }, [appliedDate, appliedRmsId, timeZoneId]);
 
   const { data: apiLogs } = useLog(logPayload, { page: 1, limit: 30 });
 

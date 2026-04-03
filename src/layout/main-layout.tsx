@@ -10,6 +10,7 @@ import { Outlet } from "@tanstack/react-router";
 import { MoonIcon, SunIcon } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
+import { TimezoneSearchCombobox } from "@/components/timezone-combobox";
 
 export default function MainLayout() {
   const [activeTab, setActiveTab] = React.useState("dashboard");
@@ -23,7 +24,8 @@ export default function MainLayout() {
           <div className="flex items-center gap-2">
             <SidebarTrigger size={"lg"} className="-ml-1" />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <TimezoneSearchCombobox />
             <Button
               variant="ghost"
               className="border border-transparent text-muted-foreground hover:text-white hover:border-border hover:bg-accent"

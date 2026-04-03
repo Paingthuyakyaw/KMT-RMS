@@ -14,8 +14,9 @@ import {
 } from "@/components/ui/select";
 import { useActiveAlarm } from "@/store/server/alarm/query";
 import { useProjectList } from "@/store/server/project/query";
-import dayjs from "dayjs";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { formatInstantInTz, todayYmdInTz } from "@/lib/app-timezone";
+import { useTimezoneStore } from "@/store/client/timezone-store";
 import {
   AlertCircle,
   AlertTriangle,
@@ -68,7 +69,7 @@ const alarmTypeColorMap: Record<string, string> = {
 };
 
 export default function ActiveAlarm() {
-  const today = dayjs().format("YYYY-MM-DD");
+  const timeZoneId = useTimezoneStore((s) => s.timeZoneId);
   const [tableExpanded, setTableExpanded] = useState(false);
   const [draftFilter, setDraftFilter] = useState<{
     alarm_type: string;
@@ -78,10 +79,18 @@ export default function ActiveAlarm() {
   }>(() => ({
     alarm_type: "",
     device_name: "",
-    from_date: today,
+    from_date: todayYmdInTz(useTimezoneStore.getState().timeZoneId),
     project_id: "",
   }));
   const [appliedFilter, setAppliedFilter] = useState(draftFilter);
+
+  useEffect(() => {
+    const ymd = todayYmdInTz(timeZoneId);
+    queueMicrotask(() => {
+      setDraftFilter((prev) => ({ ...prev, from_date: ymd }));
+      setAppliedFilter((prev) => ({ ...prev, from_date: ymd }));
+    });
+  }, [timeZoneId]);
   const { data: projectData } = useProjectList({});
   const projects = projectData?.projects ?? [];
 
@@ -94,7 +103,7 @@ export default function ActiveAlarm() {
     const resetFilter = {
       alarm_type: "",
       device_name: "",
-      from_date: today,
+      from_date: todayYmdInTz(timeZoneId),
       project_id: "",
     };
     setDraftFilter(resetFilter);
@@ -105,7 +114,7 @@ export default function ActiveAlarm() {
     // date input ကို user က clear လုပ်နိုင်လို့ `from_date` blank ဖြစ်လာရင် backend error ဖြစ်နိုင်တာကြောင့် fallback ထားတယ်။
     setAppliedFilter({
       ...draftFilter,
-      from_date: draftFilter.from_date || today,
+      from_date: draftFilter.from_date || todayYmdInTz(timeZoneId),
     });
   };
 
@@ -300,7 +309,15 @@ export default function ActiveAlarm() {
             >
               <div className="border-r pl-2 py-2">{item.device_name}</div>
               <div className="border-r py-2">{item.trigger_name}</div>
-              <div className="border-r py-2 col-span-2">{item.alarm_time}</div>
+              <div className="border-r py-2 col-span-2">
+                {item.alarm_time
+                  ? formatInstantInTz(
+                      item.alarm_time,
+                      timeZoneId,
+                      "YYYY-MM-DD HH:mm:ss",
+                    )
+                  : ""}
+              </div>
               <div className="border-r py-2">
                 <Badge className="bg-green-500 dark:bg-green-600">
                   Alarm

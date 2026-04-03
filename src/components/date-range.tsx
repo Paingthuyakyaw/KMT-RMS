@@ -7,9 +7,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import {  format } from "date-fns"
 import { CalendarIcon } from "lucide-react"
 import { type DateRange } from "react-day-picker"
+import dayjs from "@/lib/dayjs"
+import { normalizeTimeZoneId } from "@/lib/app-timezone"
+import { useTimezoneStore } from "@/store/client/timezone-store"
 
 interface DatePickerWithRangeProps {
  date : DateRange | undefined;
@@ -17,6 +19,8 @@ interface DatePickerWithRangeProps {
 }
 
 export function DatePickerWithRange({ date, setDate }: DatePickerWithRangeProps) {
+  const timeZoneId = useTimezoneStore((s) => s.timeZoneId)
+  const tz = normalizeTimeZoneId(timeZoneId)
 
   return (
     <Field className=" w-full">
@@ -31,11 +35,11 @@ export function DatePickerWithRange({ date, setDate }: DatePickerWithRangeProps)
             {date?.from ? (
               date.to ? (
                 <>
-                  {format(date.from, "LLL dd, y")} -{" "}
-                  {format(date.to, "LLL dd, y")}
+                  {dayjs(date.from).tz(tz).format("MMM D, YYYY")} -{" "}
+                  {dayjs(date.to).tz(tz).format("MMM D, YYYY")}
                 </>
               ) : (
-                format(date.from, "LLL dd, y")
+                dayjs(date.from).tz(tz).format("MMM D, YYYY")
               )
             ) : (
               <span>Pick a date</span>
