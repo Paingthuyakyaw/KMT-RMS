@@ -1,10 +1,8 @@
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { AlarmHistoryDataTable } from "@/features/alarm/components/alarm-history-data-table";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
@@ -22,17 +20,13 @@ import {
   ComboboxList,
 } from "@/components/ui/combobox";
 import { useEffect, useMemo, useState } from "react";
-import {
-  dateToApiYmd,
-  formatInstantInTz,
-  todayBoundsInTz,
-} from "@/lib/app-timezone";
+import { dateToApiYmd, todayBoundsInTz } from "@/lib/app-timezone";
 import { useTimezoneStore } from "@/store/client/timezone-store";
 import { AlertCircle, Filter, Maximize2, Minimize2 } from "lucide-react";
 import { useMinorAlarm } from "@/store/server/alarm/query";
 import { useTriggerList, type TriggerListItem } from "@/store/server/alarm/query";
 import { DatePicker } from "@/components/date-picker";
-import { scrollWindowToBottom } from "@/lib/utils";
+import { cn, scrollWindowToBottom } from "@/lib/utils";
 import { useProjectList } from "@/store/server/project/query";
 
 const MinorAlarm = () => {
@@ -91,7 +85,9 @@ const MinorAlarm = () => {
   });
 
   const minorCount = useMemo(() => data?.alarm_counts || 0, [data?.alarm_counts]);
-  const scrollClassName = tableExpanded ? "flex-1 min-h-0" : "h-[70vh]";
+  const tableScrollClassName = tableExpanded
+    ? "min-h-0 flex-1 overflow-x-auto overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]"
+    : "h-[min(58dvh,26rem)] overflow-x-auto overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] sm:h-[min(62dvh,30rem)] md:h-[70vh]";
 
   const handleReset = () => {
     const { from, to } = todayBoundsInTz(timeZoneId);
@@ -117,14 +113,14 @@ const MinorAlarm = () => {
   };
 
   return (
-    <div className="flex h-screen flex-col min-h-0">
-      <h4 className="text-lg font-semibold tracking-tight shrink-0">
+    <div className="flex h-screen min-h-0 flex-col px-2 pb-3 sm:px-3 sm:pb-4 md:px-0 md:pb-6">
+      <h4 className="shrink-0 text-base font-semibold tracking-tight sm:text-lg">
         Minor Alarm
       </h4>
 
       {!tableExpanded ? (
-        <div className="my-8 flex flex-wrap gap-3">
-          <Card className="min-w-30 border border-border bg-card px-2 py-2 shadow-none">
+        <div className="my-4 sm:my-6">
+          <Card className="min-w-0 max-w-sm border border-border bg-card px-2 py-2 shadow-none sm:min-w-30">
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
                 <AlertCircle className="h-4 w-4" />
@@ -143,11 +139,11 @@ const MinorAlarm = () => {
       ) : null}
 
       <div
-        className={`bg-white dark:bg-muted border rounded-md text-sm flex flex-col min-h-0 ${
+        className={`flex min-h-0 flex-col rounded-md border bg-white text-xs sm:text-sm dark:bg-muted ${
           tableExpanded ? "flex-1" : ""
         }`}
       >
-        <div className="flex items-center justify-end px-3 py-2">
+        <div className="flex flex-wrap items-center justify-end gap-2 px-2 py-2 sm:px-3">
           <div className="flex items-center gap-2">
             <Popover>
               <PopoverTrigger asChild>
@@ -162,13 +158,20 @@ const MinorAlarm = () => {
                   Filter
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-80 p-4" align="end" sideOffset={8}>
-                <div className="space-y-4">
+              <PopoverContent
+                className="flex w-[min(100vw-1.5rem,20rem)] max-w-[calc(100vw-1rem)] max-h-[min(32rem,calc(100dvh-2rem))] flex-col gap-0 overflow-hidden p-0 sm:w-80"
+                align="end"
+                sideOffset={8}
+                collisionPadding={12}
+              >
+                <div className="shrink-0 border-b border-border px-4 py-3">
                   <div className="text-sm font-semibold text-foreground">
                     Filter Options
                   </div>
+                </div>
 
-                  <div className="space-y-4">
+                <div className="max-h-[min(22rem,calc(100dvh-8rem))] overflow-y-auto overflow-x-hidden overscroll-contain [scrollbar-gutter:stable]">
+                  <div className="space-y-4 p-4 pr-3">
                     <div className="space-y-2">
                       <Label>Device Name</Label>
                       <Input
@@ -226,7 +229,7 @@ const MinorAlarm = () => {
                         <ComboboxInput
                           placeholder="Search and select trigger"
                           showClear
-                          className="w-full min-w-0 h-9"
+                          className="h-9 min-w-0 w-full"
                         />
                         <ComboboxContent className="w-[var(--anchor-width)] min-w-[min(100%,18rem)]">
                           <ComboboxEmpty>No triggers found.</ComboboxEmpty>
@@ -275,26 +278,26 @@ const MinorAlarm = () => {
                       />
                     </div>
                   </div>
+                </div>
 
-                  <div className="flex justify-end gap-2 pt-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-7 px-3 text-xs"
-                      onClick={handleReset}
-                    >
-                      Reset
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="h-7 px-3 text-xs"
-                      onClick={handleApply}
-                    >
-                      Apply
-                    </Button>
-                  </div>
+                <div className="flex shrink-0 justify-end gap-2 border-t border-border bg-popover px-4 py-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-3 text-xs"
+                    onClick={handleReset}
+                  >
+                    Reset
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="h-7 px-3 text-xs"
+                    onClick={handleApply}
+                  >
+                    Apply
+                  </Button>
                 </div>
               </PopoverContent>
             </Popover>
@@ -325,50 +328,18 @@ const MinorAlarm = () => {
           </div>
         </div>
 
-        <ScrollArea className={scrollClassName}>
-          <Table className="table-fixed w-full text-sm">
-            <TableHeader className="sticky top-0 z-10 bg-muted">
-              <TableRow>
-                <TableHead className="w-[11%] border-r">Device Name</TableHead>
-                <TableHead className="w-[11%] border-r">Project Name</TableHead>
-                <TableHead className="w-[16%] border-r">Trigger</TableHead>
-                <TableHead className="w-[30%] border-r">Content</TableHead>
-                <TableHead className="w-[10%] border-r">Alarm Status</TableHead>
-                <TableHead className="w-[22%]">Alarm Time</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {data?.alarms.map((item, idx) => (
-                <TableRow key={idx}>
-                  <td className="border-r px-2 py-2">{item.device_name}</td>
-                  <td className="border-r px-2 py-2">{item.project_name}</td>
-                  <td className="border-r px-2 py-2">{item.trigger_name}</td>
-                  <td className="border-r px-2 py-2 truncate">{item.content || "-"}</td>
-                  <td className="border-r px-2 py-2">
-                    <Badge
-                      className={
-                        item.status === false
-                          ? "bg-green-600 hover:bg-green-600"
-                          : "bg-red-600 hover:bg-red-600"
-                      }
-                    >
-                      {item.status ? "Alarm" : "Normal"}
-                    </Badge>
-                  </td>
-                  <td className="px-2 py-2 whitespace-nowrap">
-                    {item.alarm_time
-                      ? formatInstantInTz(
-                          item.alarm_time,
-                          timeZoneId,
-                          "YYYY-MM-DD HH:mm:ss",
-                        )
-                      : ""}
-                  </td>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </ScrollArea>
+        <div
+          className={cn(
+            "w-full min-h-0",
+            tableExpanded && "flex min-h-0 flex-1 flex-col",
+          )}
+        >
+          <div
+            className={cn("w-full min-h-0 min-w-0 touch-pan-x", tableScrollClassName)}
+          >
+            <AlarmHistoryDataTable rows={data?.alarms} timeZoneId={timeZoneId} />
+          </div>
+        </div>
       </div>
     </div>
   );

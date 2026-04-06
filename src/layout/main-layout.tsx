@@ -40,7 +40,7 @@ export default function MainLayout() {
             </Button>
           </div>
         </header>
-        <div className=" p-7 bg-neutral-50 dark:bg-neutral-900 ">
+        <div className="bg-neutral-50 p-3 sm:p-5 md:p-7 dark:bg-neutral-900">
           <Outlet />
         </div>
       </SidebarInset>

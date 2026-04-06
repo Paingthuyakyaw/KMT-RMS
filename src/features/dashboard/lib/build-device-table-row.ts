@@ -42,6 +42,17 @@ function normalizeValue(v: unknown): string | number | undefined {
   return String(v);
 }
 
+/** JSON metric value 0 → Offline, 1 → Online (DG / Cabinet columns). */
+function mapZeroOneToOnlineOffline(v: unknown): string | undefined {
+  if (v === null || v === undefined) return undefined;
+  if (typeof v === "boolean") return v ? "Online" : "Offline";
+  const n = Number(v);
+  if (!Number.isFinite(n)) return undefined;
+  if (n === 0) return "Offline";
+  if (n === 1) return "Online";
+  return undefined;
+}
+
 /** Chart route id — preserved from dashboard parity logic */
 function chartIdForSiteId(siteId: string | undefined): string {
   const siteIdDigits = Number(String(siteId ?? "").replace(/\D/g, ""));
@@ -131,7 +142,16 @@ export function getDeviceTableRowModel(
     battVoltage: getLatestValue("Battery_Voltage"),
     battCurrent: getLatestValue("Battery_Current"),
     roomTemp: getLatestValue("Room_Temp"),
-
+    batteryTemp: getLatestValue("Battery_Temp"),
+    rectifierCurrent: getLatestValue("Total_Rec_Current"),
+    SOC: getLatestValue("SOC"),
+    dgbVoltage : getLatestValue("DG_Starter_Battery"),
+    Fuel_Level : getLatestValue("Fuel_Level"), 
+    chargeVoltage : getLatestValue("Charge Alternator Voltage"),   
+    // dgrhHrs : getLatestValue("Engine_Run_Hours")  ,
+    gensetEnergy : getLatestValue("Generator_KWH"),
+    dailyDgRh : getLatestValue("Daily_DGRH"),
+    dgStatus: mapZeroOneToOnlineOffline(getLatestValue("DG_Status")),
     chargingCurrent:
       getLatestValue("Charging_Current") ??
       getLatestValueByRegex(/^Charging_.*Current$/i),
@@ -145,13 +165,24 @@ export function getDeviceTableRowModel(
       getLatestValue("Solar_Output_Current") ??
       getLatestValueByRegex(/Solar_.*Output_.*(Amp|Amps|Current)/i),
 
+    loadCurrent: getLatestValue("Load_Current"),
+
     dailyGeneratedEnergy: getLatestValueByRegex(/^Daily_Generated_Energy/i),
     monthlyGeneratedEnergy: getLatestValueByRegex(/^Monthly_Generated_Energy/i),
-    totalGeneratedEnergy: getLatestValueByRegex(/^Total_Generated_Energy/i),
+    totalGeneratedEnergy: getLatestValue("Total_Generated_Energy"),
 
     dailyLoadEnergy: getLatestValueByRegex(/^Daily_Load_Energy/i),
     monthlyLoadEnergy: getLatestValueByRegex(/^Monthly_Load_Energy/i),
     totalLoadEnergy: getLatestValueByRegex(/^Total_Load_Energy/i),
+    cph : getLatestValue("CPH"),
+    tenant2Power : getLatestValue("Operator2_Watt"),
+    tenant2Load : getLatestValue("Operator2_Load"),
+    cabinetStatus: mapZeroOneToOnlineOffline(
+      getLatestValue("Cabinet_Status") ?? getLatestValue("Cabinet_Door_Alarm"),
+    ),
+    gridFQ : getLatestValue("Grid Frequency"),
+    DG_Starter_Battery : getLatestValue("DG_Starter_Battery"),
+    oilBar : getLatestValue("Oil_Pressure")
   };
 
   return {

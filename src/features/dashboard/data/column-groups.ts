@@ -40,7 +40,7 @@ export const columnGroups: DashboardColumnGroup[] = [
         label: "Rectifier Current(A)",
         minWidth: "144px",
       },
-      { key: "soc", label: "SOC (%)", minWidth: "64px" },
+      { key: "SOC", label: "SOC (%)", minWidth: "64px" },
     ],
   },
   {
@@ -74,7 +74,7 @@ export const columnGroups: DashboardColumnGroup[] = [
   {
     label: "DG Info",
     columns: [
-      { key: "fuelLevel", label: "Fuel Level(L)", minWidth: "96px" },
+      { key: "Fuel_Level", label: "Fuel Level(L)", minWidth: "96px" },
       { key: "engineRunTime", label: "Engine Run Time(Hrs)", minWidth: "144px" },
       { key: "gensetEnergy", label: "Genset Energy(kWh)", minWidth: "132px" },
       {
@@ -88,7 +88,7 @@ export const columnGroups: DashboardColumnGroup[] = [
       { key: "gensetL1A", label: "Genset L1(A)", minWidth: "88px" },
       { key: "gensetL2A", label: "Genset L2(A)", minWidth: "88px" },
       { key: "gensetL3A", label: "Genset L3(A)", minWidth: "88px" },
-      { key: "dgbVoltage", label: "DGB Voltage(V)", minWidth: "108px" },
+      { key: "DG_Starter_Battery", label: "DGB Voltage(V)", minWidth: "108px" },
       { key: "chargeVoltage", label: "Charge Voltage(V)", minWidth: "128px" },
       { key: "oilBar", label: "Oil Bar", minWidth: "68px" },
       { key: "engineTemp", label: "Engine Temp", minWidth: "98px" },
@@ -138,6 +138,11 @@ export const columnGroups: DashboardColumnGroup[] = [
         key: "solarOutputAmps",
         label: "Solar Output Amps (A)",
         minWidth: "148px",
+      },
+      {
+        key: "loadCurrent",
+        label: "Load Current (A)",
+        minWidth: "128px",
       },
       {
         key: "dailyGeneratedEnergy",

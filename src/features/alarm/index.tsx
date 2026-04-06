@@ -3,7 +3,15 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
@@ -69,6 +77,19 @@ const alarmTypeColorMap: Record<string, string> = {
   critical_alarm: "bg-red-500 dark:bg-red-700",
 };
 
+/**
+ * Device + Trigger: min-width floor + nowrap → column grows with longest line (no wrap).
+ * Other columns: min-width so they stay readable; table-auto + w-max + parent overflow scroll.
+ */
+const ACTIVE_ALARM_COLUMNS = [
+  { key: "device", label: "Device Name", minWidthPx: 104, nowrap: true },
+  { key: "trigger", label: "Trigger Name", minWidthPx: 200, nowrap: true },
+  { key: "time", label: "Alarm Generate Time", minWidthPx: 176, nowrap: true },
+  { key: "state", label: "Alarm State", minWidthPx: 100, nowrap: false },
+  { key: "type", label: "Alarm Type", minWidthPx: 132, nowrap: false },
+  { key: "duration", label: "Duration", minWidthPx: 80, nowrap: true },
+] as const;
+
 export default function ActiveAlarm() {
   const timeZoneId = useTimezoneStore((s) => s.timeZoneId);
   const [tableExpanded, setTableExpanded] = useState(false);
@@ -98,7 +119,9 @@ export default function ActiveAlarm() {
   const { data } = useActiveAlarm(appliedFilter);
   const card: any = data;
 
-  const scrollClassName = tableExpanded ? "flex-1 min-h-0" : "h-[70vh]";
+  const tableScrollClassName = tableExpanded
+    ? "min-h-0 flex-1 overflow-x-auto overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]"
+    : "h-[min(58dvh,26rem)] overflow-x-auto overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] sm:h-[min(62dvh,30rem)] md:h-[70vh]";
 
   const handleReset = () => {
     const resetFilter = {
@@ -120,17 +143,17 @@ export default function ActiveAlarm() {
   };
 
   return (
-    <div className="flex h-screen flex-col min-h-0">
-      <h4 className="text-lg font-semibold tracking-tight shrink-0">
+    <div className="flex h-screen min-h-0 flex-col px-2 pb-3 sm:px-3 sm:pb-4 md:px-0 md:pb-6">
+      <h4 className="shrink-0 text-base font-semibold tracking-tight sm:text-lg">
         Active Alarm
       </h4>
 
       {!tableExpanded ? (
-        <div className="my-8 flex flex-wrap gap-3">
+        <div className="my-4 grid grid-cols-2 gap-2 sm:my-6 sm:gap-3 lg:grid-cols-4">
           {alarmSummary.map((item: any) => (
             <Card
               key={item.id}
-              className="min-w-30 border border-border bg-card px-2 py-2 shadow-none"
+              className="min-w-0 border border-border bg-card px-2 py-2 shadow-none sm:min-w-30"
             >
               <div className="flex items-center gap-2">
                 <div
@@ -153,11 +176,11 @@ export default function ActiveAlarm() {
       ) : null}
 
       <div
-        className={`bg-white dark:bg-muted border rounded-md text-sm flex flex-col min-h-0 ${
+        className={`flex min-h-0 flex-col rounded-md border bg-white text-xs sm:text-sm dark:bg-muted ${
           tableExpanded ? "flex-1" : ""
         }`}
       >
-        <div className="flex items-center justify-end px-3 py-2">
+        <div className="flex flex-wrap items-center justify-end gap-2 px-2 py-2 sm:px-3">
           <div className="flex items-center gap-2">
             <Popover>
               <PopoverTrigger asChild>
@@ -174,19 +197,21 @@ export default function ActiveAlarm() {
               </PopoverTrigger>
 
               <PopoverContent
-                className="w-80 p-4"
+                className="flex w-[min(100vw-1.5rem,20rem)] max-w-[calc(100vw-1rem)] max-h-[min(32rem,calc(100dvh-2rem))] flex-col gap-0 overflow-hidden p-0 sm:w-80"
                 align="end"
                 sideOffset={8}
+                collisionPadding={12}
               >
-                <div className="space-y-4">
+                <div className="shrink-0 border-b border-border px-4 py-3">
                   <div className="text-sm font-semibold text-foreground">
                     Filter Options
                   </div>
+                </div>
 
-                  <div className="space-y-4">
+                <div className="max-h-[min(22rem,calc(100dvh-8rem))] overflow-y-auto overflow-x-hidden overscroll-contain [scrollbar-gutter:stable]">
+                  <div className="space-y-4 p-4 pr-3">
                     <div className="space-y-2">
                       <Label>Alarm Type</Label>
-                      
                     </div>
 
                     <div className="space-y-2">
@@ -242,26 +267,26 @@ export default function ActiveAlarm() {
                       />
                     </div>
                   </div>
+                </div>
 
-                  <div className="flex justify-end gap-2 pt-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-7 px-3 text-xs"
-                      onClick={handleReset}
-                    >
-                      Reset
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="h-7 px-3 text-xs"
-                      onClick={handleApply}
-                    >
-                      Apply
-                    </Button>
-                  </div>
+                <div className="flex shrink-0 justify-end gap-2 border-t border-border bg-popover px-4 py-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-3 text-xs"
+                    onClick={handleReset}
+                  >
+                    Reset
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="h-7 px-3 text-xs"
+                    onClick={handleApply}
+                  >
+                    Apply
+                  </Button>
                 </div>
               </PopoverContent>
             </Popover>
@@ -294,51 +319,117 @@ export default function ActiveAlarm() {
           </div>
         </div>
 
-        <div className="border-b border-t grid grid-cols-7 gap-2 last:border-b-0">
-          <div className="border-r pl-2 py-2">Device Name</div>
-          <div className="border-r py-2">Trigger Name</div>
-          <div className="border-r py-2 col-span-2">Alarm Generate Time</div>
-          <div className="border-r py-2">Alarm State</div>
-          <div className="border-r py-2">Alarm Type</div>
-          <div className="text-end pr-2 py-2">Duration</div>
+        <div
+          className={cn(
+            "w-full min-h-0",
+            tableExpanded && "flex min-h-0 flex-1 flex-col",
+          )}
+        >
+          <div className={cn("w-full min-h-0", tableScrollClassName)}>
+            <Table className="table-auto border-collapse bg-muted text-sm caption-bottom">
+              <TableHeader>
+                <TableRow className="sticky top-0 z-20 border-0 bg-muted hover:bg-muted">
+                  {ACTIVE_ALARM_COLUMNS.map((col) => (
+                    <TableHead
+                      key={col.key}
+                      className={cn(
+                        "border-border bg-muted px-2 py-2.5 text-xs font-semibold ",
+                        col.key === "device" &&
+                          "sticky left-0 z-30 border-border bg-muted",
+                        col.nowrap && "whitespace-nowrap",
+                        col.key == "duration" && "text-end"
+                      )}
+                      style={{ minWidth: col.minWidthPx, boxSizing: "border-box" }}
+                    >
+                      {col.label}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data?.alarms?.map((item) => (
+                  <TableRow
+                    key={item.id}
+                    className="bg-muted hover:bg-muted/80"
+                  >
+                    <TableCell
+                      className="sticky left-0 z-10 border-border bg-muted px-2 py-2 text-xs whitespace-nowrap sm:text-sm"
+                      style={{
+                        minWidth: ACTIVE_ALARM_COLUMNS[0].minWidthPx,
+                        boxSizing: "border-box",
+                      }}
+                    >
+                      {item.device_name}
+                    </TableCell>
+                    <TableCell
+                      className="px-2 py-2 text-xs whitespace-nowrap sm:text-sm"
+                      style={{
+                        minWidth: ACTIVE_ALARM_COLUMNS[1].minWidthPx,
+                        boxSizing: "border-box",
+                      }}
+                    >
+                      {item.trigger_name}
+                    </TableCell>
+                    <TableCell
+                      className="px-2 py-2 text-xs whitespace-nowrap tabular-nums sm:text-sm"
+                      style={{
+                        minWidth: ACTIVE_ALARM_COLUMNS[2].minWidthPx,
+                        boxSizing: "border-box",
+                      }}
+                    >
+                      {item.alarm_time
+                        ? formatInstantInTz(
+                            item.alarm_time,
+                            timeZoneId,
+                            "YYYY-MM-DD HH:mm:ss",
+                          )
+                        : ""}
+                    </TableCell>
+                    <TableCell
+                      className="px-2 py-2 text-xs sm:text-sm"
+                      style={{
+                        minWidth: ACTIVE_ALARM_COLUMNS[3].minWidthPx,
+                        boxSizing: "border-box",
+                      }}
+                    >
+                      <Badge className="whitespace-nowrap bg-green-500 text-[10px] sm:text-xs dark:bg-green-600">
+                        Alarm
+                      </Badge>
+                    </TableCell>
+                    <TableCell
+                      className="px-2 py-2 text-xs sm:text-sm"
+                      style={{
+                        minWidth: ACTIVE_ALARM_COLUMNS[4].minWidthPx,
+                        boxSizing: "border-box",
+                      }}
+                    >
+                      <Badge
+                        className={`inline-block whitespace-nowrap text-left text-[10px] capitalize sm:text-xs ${
+                          alarmTypeColorMap[
+                            item.alarm_type?.toLowerCase() || ""
+                          ] || "bg-gray-500 dark:bg-gray-600"
+                        }`}
+                      >
+                        {item.alarm_type}
+                      </Badge>
+                    </TableCell>
+                    <TableCell
+                      className="px-2 py-2 text-end text-xs whitespace-nowrap tabular-nums sm:text-sm"
+                      style={{
+                        minWidth: ACTIVE_ALARM_COLUMNS[5].minWidthPx,
+                        boxSizing: "border-box",
+                      }}
+                    >
+                      {item.duration
+                        ? parseFloat(item.duration.toString()).toFixed(2)
+                        : "0.00"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </div>
-
-        <ScrollArea className={scrollClassName}>
-          {data?.alarms?.map((item) => (
-            <div
-              key={item.id}
-              className="border-b grid grid-cols-7 gap-2 last:border-b-0"
-            >
-              <div className="border-r pl-2 py-2">{item.device_name}</div>
-              <div className="border-r py-2">{item.trigger_name}</div>
-              <div className="border-r py-2 col-span-2">
-                {item.alarm_time
-                  ? formatInstantInTz(
-                      item.alarm_time,
-                      timeZoneId,
-                      "YYYY-MM-DD HH:mm:ss",
-                    )
-                  : ""}
-              </div>
-              <div className="border-r py-2">
-                <Badge className="bg-green-500 dark:bg-green-600">
-                  Alarm
-                </Badge>
-              </div>
-              <div className="border-r py-2">
-                <Badge
-                  className={`capitalize ${
-                    alarmTypeColorMap[item.alarm_type?.toLowerCase() || ""] ||
-                    "bg-gray-500 dark:bg-gray-600"
-                  }`}
-                >
-                  {item.alarm_type}
-                </Badge>
-              </div>
-              <div className="text-end pr-2 py-2">{item.duration ? parseFloat(item.duration.toString()).toFixed(2) : "0.00"}</div>
-            </div>
-          ))}
-        </ScrollArea>
       </div>
     </div>
   );
