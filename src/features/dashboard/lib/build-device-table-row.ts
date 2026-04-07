@@ -53,6 +53,63 @@ function mapZeroOneToOnlineOffline(v: unknown): string | undefined {
   return undefined;
 }
 
+/**
+ * Backend `time` can arrive in different epoch-like scales (ms, sec*100, sec).
+ * Pick the interpretation closest to current time and convert to ms.
+ */
+function normalizeEpochLikeToMs(raw: unknown): number | undefined {
+  if (typeof raw !== "number" || !Number.isFinite(raw) || raw <= 0) {
+    return undefined;
+  }
+
+  const now = Date.now();
+  const candidates = [raw, raw * 10, raw * 100, raw * 1000];
+  let best = candidates[0];
+  let bestDiff = Math.abs(now - best);
+
+  for (const candidate of candidates.slice(1)) {
+    const diff = Math.abs(now - candidate);
+    if (diff < bestDiff) {
+      best = candidate;
+      bestDiff = diff;
+    }
+  }
+
+  return best;
+}
+
+function getBatteryPackStatusFromJsonPoints(jsonPoints: unknown[]): string | undefined {
+  const PACK_VARIABLE_NAMES = new Set(
+    Array.from({ length: 12 }, (_, i) => `Pack${i + 1}_Volt`),
+  );
+  const THIRTY_MINUTES_MS = 30 * 60 * 1000;
+  const nowMs = Date.now();
+
+  const packPoints = (Array.isArray(jsonPoints) ? jsonPoints : []).filter((p: any) =>
+    PACK_VARIABLE_NAMES.has(String(p?.variableName ?? "")),
+  ) as any[];
+
+  if (!packPoints.length) return undefined;
+
+  let onlineCount = 0;
+  let offlineCount = 0;
+  for (const point of packPoints) {
+    const pointTimeMs = normalizeEpochLikeToMs(point?.time);
+    const diffMs = pointTimeMs !== undefined ? Math.abs(nowMs - pointTimeMs) : Infinity;
+    if (diffMs > THIRTY_MINUTES_MS) {
+      offlineCount += 1;
+    } else {
+      onlineCount += 1;
+    }
+  }
+
+  if (offlineCount === packPoints.length) return "Offline";
+  if (onlineCount === packPoints.length) return "Online";
+  if (offlineCount > 0) return `${offlineCount} Pack Offline`;
+  if (onlineCount > 0) return `${onlineCount} Pack Online`;
+  return undefined;
+}
+
 /** Chart route id — preserved from dashboard parity logic */
 function chartIdForSiteId(siteId: string | undefined): string {
   const siteIdDigits = Number(String(siteId ?? "").replace(/\D/g, ""));
@@ -87,6 +144,8 @@ export function getDeviceTableRowModel(
 
   const jsonPoints: any[] = Array.isArray(d?.json) ? d.json : [];
   const latestByVariableName = latestByVariableNameFromJson(jsonPoints);
+  const dgVoltagePoint = latestByVariableName["Generator L1-N Voltage"];
+  const batteryVoltagePoint = latestByVariableName["Battery_Voltage"];
 
   const getLatestValue = (variableName: string) =>
     normalizeValue(latestByVariableName[variableName]?.value);
@@ -97,6 +156,53 @@ export function getDeviceTableRowModel(
     }
     return undefined;
   };
+  const getLatestModeEnabled = (
+    candidates: Array<{ variableNames: string[]; label: string }>,
+  ): string | undefined => {
+    for (const candidate of candidates) {
+      for (const variableName of candidate.variableNames) {
+        const value = normalizeValue(latestByVariableName[variableName]?.value);
+        if (Number(value) === 1) return candidate.label;
+      }
+    }
+    return undefined;
+  };
+
+  const dgStatusByVoltageFreshness = (() => {
+    const pointTimeMs = normalizeEpochLikeToMs(dgVoltagePoint?.time);
+    if (!pointTimeMs) return undefined;
+    const THIRTY_MINUTES_MS = 30 * 60 * 1000;
+    return Date.now() - pointTimeMs <= THIRTY_MINUTES_MS
+      ? "Online"
+      : "Offline";
+  })();
+  const cabinetStatusByBatteryVoltageFreshness = (() => {
+    const pointTimeMs = normalizeEpochLikeToMs(batteryVoltagePoint?.time);
+    if (!pointTimeMs) return undefined;
+    const THIRTY_MINUTES_MS = 30 * 60 * 1000;
+    return Date.now() - pointTimeMs <= THIRTY_MINUTES_MS
+      ? "Online"
+      : "Offline";
+  })();
+  const batteryStatusByPackFreshness = getBatteryPackStatusFromJsonPoints(jsonPoints);
+  const solarStatusByPv1Freshness = (() => {
+    const pointTimeMs = normalizeEpochLikeToMs(
+      latestByVariableName["PV1_Input_Volt"]?.time,
+    );
+    if (!pointTimeMs) return undefined;
+    const THIRTY_MINUTES_MS = 30 * 60 * 1000;
+    return Math.abs(Date.now() - pointTimeMs) > THIRTY_MINUTES_MS
+      ? "Offline"
+      : "Online";
+  })();
+  const dgControllerMode = getLatestModeEnabled([
+    { variableNames: ["Auto Mode", "Auto_Mode"], label: "Auto Mode" },
+    { variableNames: ["STOP Mode", "Stop Mode", "Stop_Mode"], label: "STOP Mode" },
+    {
+      variableNames: ["Manual Mode", "Manual_Mode"],
+      label: "Manual Mode",
+    },
+  ]);
 
   const row: DeviceTableRow = {
     siteId,
@@ -150,8 +256,11 @@ export function getDeviceTableRowModel(
     chargeVoltage : getLatestValue("Charge Alternator Voltage"),   
     // dgrhHrs : getLatestValue("Engine_Run_Hours")  ,
     gensetEnergy : getLatestValue("Generator_KWH"),
+    dgControllerMode,
     dailyDgRh : getLatestValue("Daily_DGRH"),
-    dgStatus: mapZeroOneToOnlineOffline(getLatestValue("DG_Status")),
+    dgStatus:
+      dgStatusByVoltageFreshness ??
+      mapZeroOneToOnlineOffline(getLatestValue("DG_Status")),
     chargingCurrent:
       getLatestValue("Charging_Current") ??
       getLatestValueByRegex(/^Charging_.*Current$/i),
@@ -166,6 +275,16 @@ export function getDeviceTableRowModel(
       getLatestValueByRegex(/Solar_.*Output_.*(Amp|Amps|Current)/i),
 
     loadCurrent: getLatestValue("Load_Current"),
+    gridL1V : getLatestValue("Grid L1-N Voltage"),
+    gridL2V : getLatestValue("Grid L2-N Voltage"),
+    gridL3V : getLatestValue("Grid L3-N Voltage"),
+    gensetL1V : getLatestValue("Generator L1-N Voltage"),
+    gensetL2V : getLatestValue("Generator L2-N Voltage"),
+    gensetL3V : getLatestValue("Generator L3-N Voltage"),
+    gensetL1A : getLatestValue("Generator L1 Current"),
+    gensetL2A : getLatestValue("Generator L2 Current"),
+    gensetL3A : getLatestValue("Generator L3 Current"),
+    gridEnergy : getLatestValue("Grid_kWh"),
 
     dailyGeneratedEnergy: getLatestValueByRegex(/^Daily_Generated_Energy/i),
     monthlyGeneratedEnergy: getLatestValueByRegex(/^Monthly_Generated_Energy/i),
@@ -177,9 +296,13 @@ export function getDeviceTableRowModel(
     cph : getLatestValue("CPH"),
     tenant2Power : getLatestValue("Operator2_Watt"),
     tenant2Load : getLatestValue("Operator2_Load"),
-    cabinetStatus: mapZeroOneToOnlineOffline(
-      getLatestValue("Cabinet_Status") ?? getLatestValue("Cabinet_Door_Alarm"),
-    ),
+    cabinetStatus:
+      cabinetStatusByBatteryVoltageFreshness ??
+      mapZeroOneToOnlineOffline(
+        getLatestValue("Cabinet_Status") ?? getLatestValue("Cabinet_Door_Alarm"),
+      ),
+    batteryStatus: batteryStatusByPackFreshness,
+    solarStatus: solarStatusByPv1Freshness,
     gridFQ : getLatestValue("Grid Frequency"),
     DG_Starter_Battery : getLatestValue("DG_Starter_Battery"),
     oilBar : getLatestValue("Oil_Pressure")
