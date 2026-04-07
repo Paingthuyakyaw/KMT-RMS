@@ -285,11 +285,10 @@ export function getDeviceTableRowModel(
     gensetL2A : getLatestValue("Generator L2 Current"),
     gensetL3A : getLatestValue("Generator L3 Current"),
     gridEnergy : getLatestValue("Grid_kWh"),
-
+    engineFQ : getLatestValue("Generator Frequency"),
     dailyGeneratedEnergy: getLatestValueByRegex(/^Daily_Generated_Energy/i),
     monthlyGeneratedEnergy: getLatestValueByRegex(/^Monthly_Generated_Energy/i),
     totalGeneratedEnergy: getLatestValue("Total_Generated_Energy"),
-
     dailyLoadEnergy: getLatestValueByRegex(/^Daily_Load_Energy/i),
     monthlyLoadEnergy: getLatestValueByRegex(/^Monthly_Load_Energy/i),
     totalLoadEnergy: getLatestValueByRegex(/^Total_Load_Energy/i),
