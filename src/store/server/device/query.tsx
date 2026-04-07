@@ -1,6 +1,7 @@
 import { axios } from "@/store/api";
 import { useQuery } from "@tanstack/react-query";
 import type { Device } from "@/store/server/dashboard/typed";
+import { buildFormData } from "@/lib/utils";
 
 export type DeviceListPayload = {
   /** Search by device name (form field `name`) */
@@ -18,9 +19,10 @@ export type DeviceListResponse = {
 export async function fetchDeviceList(
   payload: DeviceListPayload = {},
 ): Promise<DeviceListResponse> {
+  const formData = buildFormData(payload)
   const { data } = await axios.post<DeviceListResponse>(
     `api/v1/device/list`,
-    payload,
+    formData,
   );
   return data;
 }

@@ -9,7 +9,7 @@ type TimezoneState = {
 export const useTimezoneStore = create<TimezoneState>()(
   persist(
     (set) => ({
-      timeZoneId: "GMT",
+      timeZoneId: "Asia/Rangoon",
       setTimeZoneId: (timeZoneId) => set({ timeZoneId }),
     }),
     { name: "huwai-timezone" },

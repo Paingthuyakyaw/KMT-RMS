@@ -355,7 +355,7 @@ export function LogComponent({
                         id="log-device-combobox"
                         placeholder="Search and select device"
                         showClear
-                        className="w-full h-9 min-w-0"
+                        className="h-9 w-full min-w-0 text-sm"
                       />
                       <ComboboxContent className=" w-full ">
                         {deviceSearchLoading ? (
@@ -394,8 +394,7 @@ export function LogComponent({
                   <div className="flex justify-end gap-2 border-t border-border/70 pt-2.5">
                     <Button
                       variant="outline"
-                      size="sm"
-                      className="h-7 px-3 text-xs"
+                      className="h-9 px-3 text-sm"
                       type="button"
                       onClick={() => {
                         const next = defaultDateRange();
@@ -408,8 +407,7 @@ export function LogComponent({
                       Reset
                     </Button>
                     <Button
-                      size="sm"
-                      className="h-7 px-3 text-xs"
+                      className="h-9 px-3 text-sm"
                       type="button"
                       onClick={() => {
                         setAppliedDate(date ? { ...date } : defaultDateRange());

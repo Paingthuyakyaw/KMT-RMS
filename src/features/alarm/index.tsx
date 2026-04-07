@@ -22,8 +22,12 @@ import {
 } from "@/components/ui/select";
 import { useActiveAlarm } from "@/store/server/alarm/query";
 import { useProjectList } from "@/store/server/project/query";
-import { useEffect, useState } from "react";
-import { formatInstantInTz, todayYmdInTz } from "@/lib/app-timezone";
+import { useEffect, useMemo, useState } from "react";
+import {
+  formatInstantInTz,
+  todayYmdInTz,
+  ymdStringToApiYmd,
+} from "@/lib/app-timezone";
 import { useTimezoneStore } from "@/store/client/timezone-store";
 import { scrollWindowToBottom } from "@/lib/utils";
 import {
@@ -116,7 +120,16 @@ export default function ActiveAlarm() {
   const { data: projectData } = useProjectList({});
   const projects = projectData?.projects ?? [];
 
-  const { data } = useActiveAlarm(appliedFilter);
+  const activeAlarmApiPayload = useMemo(() => {
+    const raw =
+      appliedFilter.from_date.trim() || todayYmdInTz(timeZoneId);
+    return {
+      ...appliedFilter,
+      from_date: ymdStringToApiYmd(raw, timeZoneId) ?? raw,
+    };
+  }, [appliedFilter, timeZoneId]);
+
+  const { data } = useActiveAlarm(activeAlarmApiPayload);
   const card: any = data;
 
   const tableScrollClassName = tableExpanded
