@@ -350,7 +350,7 @@ export default function ActiveAlarm() {
                         col.key === "device" &&
                           "sticky left-0 z-30 border-border bg-muted",
                         col.nowrap && "whitespace-nowrap",
-                        col.key == "duration" && "text-end"
+                        col.key == "duration" && "text-start"
                       )}
                       style={{ minWidth: col.minWidthPx, boxSizing: "border-box" }}
                     >
@@ -427,7 +427,7 @@ export default function ActiveAlarm() {
                       </Badge>
                     </TableCell>
                     <TableCell
-                      className="px-2 py-2 text-end text-xs whitespace-nowrap tabular-nums sm:text-sm"
+                      className="px-2 py-2  text-xs whitespace-nowrap tabular-nums sm:text-sm"
                       style={{
                         minWidth: ACTIVE_ALARM_COLUMNS[5].minWidthPx,
                         boxSizing: "border-box",

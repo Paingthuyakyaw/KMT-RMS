@@ -196,11 +196,11 @@ export function getDeviceTableRowModel(
       : "Online";
   })();
   const dgControllerMode = getLatestModeEnabled([
-    { variableNames: ["Auto Mode", "Auto_Mode"], label: "Auto Mode" },
-    { variableNames: ["STOP Mode", "Stop Mode", "Stop_Mode"], label: "STOP Mode" },
+    { variableNames: ["Auto Mode", "Auto_Mode"], label: "Auto" },
+    { variableNames: ["STOP Mode", "Stop Mode", "Stop_Mode"], label: "STOP" },
     {
       variableNames: ["Manual Mode", "Manual_Mode"],
-      label: "Manual Mode",
+      label: "Manual",
     },
   ]);
 
@@ -216,6 +216,7 @@ export function getDeviceTableRowModel(
       ? d.source_type
           .split(",")
           .map((s: string) => s.trim())
+          .filter((s: string) => s.toLowerCase() !== "l2")
           .map((s: string) => {
             if (s === "solar") return "Solar";
             if (s === "dg") return "DG";
@@ -285,6 +286,7 @@ export function getDeviceTableRowModel(
     gensetL2A : getLatestValue("Generator L2 Current"),
     gensetL3A : getLatestValue("Generator L3 Current"),
     gridEnergy : getLatestValue("Grid_kWh"),
+    engineRunTime : getLatestValue("Engine_Run_Hours"),
     engineFQ : getLatestValue("Generator Frequency"),
     dailyGeneratedEnergy: getLatestValueByRegex(/^Daily_Generated_Energy/i),
     monthlyGeneratedEnergy: getLatestValueByRegex(/^Monthly_Generated_Energy/i),
