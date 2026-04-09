@@ -1,19 +1,26 @@
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { MultiSelectFilterDropdown } from "@/components/multi-select-filter-dropdown";
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox";
 import { DatePickerWithRange } from "@/components/date-range";
 import type { DateRange } from "react-day-picker";
 import { Download, Filter } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
   civilYmdLocalCalendar,
+  dateRangeToApiDates,
   defaultDateRangeInTz,
 } from "@/lib/app-timezone";
 import { useTimezoneStore } from "@/store/client/timezone-store";
@@ -27,204 +34,83 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useTweLog } from "@/store/server/log/query";
+import useDebounce from "@/hooks/use-debounce";
+import { useDeviceListSearch } from "@/store/server/device/query";
+import type { Device } from "@/store/server/dashboard/typed";
+import { Spinner } from "@/components/ui/spinner";
+import { leafColumns } from "./constants";
+import { buildEnergyRows, deviceOptionStub, toCellDisplay } from "./helpers";
 
-type EnergyRow = Record<string, string | number>;
+function defaultDateRange(): DateRange {
+  return defaultDateRangeInTz(useTimezoneStore.getState().timeZoneId);
+}
 
-const leafColumns = [
-  { key: "siteName", label: "Site Name" },
-  { key: "startTime", label: "Start Time" },
-  { key: "endTime", label: "End Time" },
-  { key: "periodDays", label: "Period (Days)" },
-
-  // DG Run Hours
-  { key: "dgRunStart", label: "Start" },
-  { key: "dgRunEnd", label: "End" },
-  { key: "dgRhPerDay", label: "DGRH Per Day" },
-  { key: "dgTotalRunHr", label: "DG Total Run Hr" },
-
-  // Grid Run Hours
-  { key: "gridRunStart", label: "Start" },
-  { key: "gridRunEnd", label: "End" },
-  { key: "gridRhPerDay", label: "Grid RH Per Day" },
-  { key: "gridTotalRunHr", label: "Grid Total Run Hr" },
-
-  // Battery Run Hours
-  { key: "batteryRunStart", label: "Start" },
-  { key: "batteryRunEnd", label: "End" },
-  { key: "batteryRhPerDay", label: "Battery RH Per Day" },
-  { key: "batteryTotalRunHr", label: "Battery Total Run Hr" },
-
-  // Solar Run Hours
-  { key: "solarRunStart", label: "Start" },
-  { key: "solarRunEnd", label: "End" },
-  { key: "solarRhPerDay", label: "Solar RH Per Day" },
-  { key: "solarTotalRunHr", label: "Solar Total Run Hr" },
-
-  // Total run hr
-  { key: "totalRunHrPerDays", label: "Total Run Hr per days" },
-
-  // DG kWh
-  { key: "dgKwhStart", label: "Start" },
-  { key: "dgKwhEnd", label: "End" },
-  { key: "dgKwhPerDay", label: "DG KWH Per Day" },
-
-  // Grid kWh
-  { key: "gridKwhStart", label: "Start" },
-  { key: "gridKwhEnd", label: "End" },
-  { key: "gridKwhPerDay", label: "Grid KWH Per Day" },
-
-  // Battery kWh
-  { key: "batteryKwhStart", label: "Start" },
-  { key: "batteryKwhEnd", label: "End" },
-  { key: "batteryKwhPerDay", label: "Battery KWH Per Day" },
-
-  // Solar Generated kWh
-  { key: "solarGenKwhStart", label: "Start" },
-  { key: "solarGenKwhEnd", label: "End" },
-  { key: "solarGenKwhPerDay", label: "Solar KWH Per Day" },
-
-  // Solar Load kWh
-  { key: "solarLoadKwhStart", label: "Start" },
-  { key: "solarLoadKwhEnd", label: "End" },
-  { key: "solarLoadKwhPerDay", label: "Solar Load Per Day" },
-] as const;
-
-const demoRows: EnergyRow[] = [
-  {
-    siteName: "SITE-001-NYC",
-    startTime: "2026-03-01",
-    endTime: "2026-03-07",
-    periodDays: "7",
-
-    dgRunStart: "08:10",
-    dgRunEnd: "17:45",
-    dgRhPerDay: "3.2",
-    dgTotalRunHr: "22.4",
-
-    gridRunStart: "00:00",
-    gridRunEnd: "23:59",
-    gridRhPerDay: "24.0",
-    gridTotalRunHr: "168.0",
-
-    batteryRunStart: "00:20",
-    batteryRunEnd: "18:10",
-    batteryRhPerDay: "5.1",
-    batteryTotalRunHr: "35.7",
-
-    solarRunStart: "06:12",
-    solarRunEnd: "18:05",
-    solarRhPerDay: "6.0",
-    solarTotalRunHr: "42.0",
-
-    totalRunHrPerDays: "78.0",
-
-    dgKwhStart: "01:00",
-    dgKwhEnd: "06:00",
-    dgKwhPerDay: "120.5",
-
-    gridKwhStart: "00:00",
-    gridKwhEnd: "23:00",
-    gridKwhPerDay: "880.2",
-
-    batteryKwhStart: "00:30",
-    batteryKwhEnd: "17:30",
-    batteryKwhPerDay: "210.7",
-
-    solarGenKwhStart: "06:00",
-    solarGenKwhEnd: "18:00",
-    solarGenKwhPerDay: "540.4",
-
-    solarLoadKwhStart: "06:00",
-    solarLoadKwhEnd: "18:00",
-    solarLoadKwhPerDay: "460.1",
-  },
-  {
-    siteName: "SITE-002-LAX",
-    startTime: "2026-03-08",
-    endTime: "2026-03-14",
-    periodDays: "7",
-
-    dgRunStart: "09:00",
-    dgRunEnd: "16:55",
-    dgRhPerDay: "2.8",
-    dgTotalRunHr: "19.6",
-
-    gridRunStart: "00:00",
-    gridRunEnd: "23:50",
-    gridRhPerDay: "23.8",
-    gridTotalRunHr: "166.6",
-
-    batteryRunStart: "01:10",
-    batteryRunEnd: "19:20",
-    batteryRhPerDay: "5.4",
-    batteryTotalRunHr: "37.8",
-
-    solarRunStart: "06:20",
-    solarRunEnd: "18:40",
-    solarRhPerDay: "6.4",
-    solarTotalRunHr: "44.8",
-
-    totalRunHrPerDays: "79.2",
-
-    dgKwhStart: "01:10",
-    dgKwhEnd: "05:40",
-    dgKwhPerDay: "108.3",
-
-    gridKwhStart: "00:10",
-    gridKwhEnd: "22:50",
-    gridKwhPerDay: "905.6",
-
-    batteryKwhStart: "00:40",
-    batteryKwhEnd: "17:10",
-    batteryKwhPerDay: "198.4",
-
-    solarGenKwhStart: "06:05",
-    solarGenKwhEnd: "18:15",
-    solarGenKwhPerDay: "560.0",
-
-    solarLoadKwhStart: "06:05",
-    solarLoadKwhEnd: "18:15",
-    solarLoadKwhPerDay: "472.5",
-  },
-];
 
 export default function EnergyConsumption() {
   const timeZoneId = useTimezoneStore((s) => s.timeZoneId);
-  const [siteQuery, setSiteQuery] = useState("");
-  const [siteValues, setSiteValues] = useState<string[]>([]);
-  const [date, setDate] = useState<DateRange | undefined>(() =>
-    defaultDateRangeInTz(useTimezoneStore.getState().timeZoneId),
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [appliedDate, setAppliedDate] = useState<DateRange | undefined>(
+    defaultDateRange,
   );
+  const [appliedDeviceId, setAppliedDeviceId] = useState<string | undefined>();
+  const [appliedDeviceName, setAppliedDeviceName] = useState<string | undefined>();
+  const [date, setDate] = useState<DateRange | undefined>(defaultDateRange);
+  const [draftDeviceId, setDraftDeviceId] = useState<string | undefined>(undefined);
+  const [draftDeviceName, setDraftDeviceName] = useState<string | undefined>(
+    undefined,
+  );
+  const [deviceSearchInput, setDeviceSearchInput] = useState("");
+  const { debounced: debouncedDeviceName } = useDebounce({
+    value: deviceSearchInput,
+  });
+  const { data: deviceSearchData, isFetching: deviceSearchLoading } =
+    useDeviceListSearch(
+      { name: debouncedDeviceName },
+      { enabled: filterOpen },
+    );
   const [downloadDate, setDownloadDate] = useState<DateRange | undefined>(() =>
     defaultDateRangeInTz(useTimezoneStore.getState().timeZoneId),
   );
+
+  const deviceList = deviceSearchData?.devices ?? [];
+
+  const draftSelectedDevice = useMemo((): Device | null => {
+    const raw = draftDeviceId?.trim();
+    if (!raw) return null;
+    const idNum = Number(raw);
+    if (!Number.isFinite(idNum)) return null;
+    const fromList = deviceList.find((d) => String(d.rms_device_id) === raw);
+    if (fromList) return fromList;
+    return deviceOptionStub(idNum, draftDeviceName?.trim() || raw);
+  }, [draftDeviceId, draftDeviceName, deviceList]);
+
+  const logPayload = useMemo(() => {
+    const { from_date, to_date } = dateRangeToApiDates(appliedDate, timeZoneId);
+    return {
+      device_id: appliedDeviceId,
+      from_date,
+      to_date,
+    };
+  }, [appliedDate, appliedDeviceId, timeZoneId]);
+
+  const { data } = useTweLog(logPayload);
 
   useEffect(() => {
     const next = defaultDateRangeInTz(timeZoneId);
     queueMicrotask(() => {
       setDate(next);
+      setAppliedDate(next);
       setDownloadDate(next);
     });
   }, [timeZoneId]);
 
-  const siteOptions = useMemo(
-    () =>
-      Array.from(new Set(demoRows.map((r) => String(r.siteName)))).map((v) => ({
-        label: v,
-        value: v,
-      })),
-    [],
+  const energyRows = useMemo(
+    () => buildEnergyRows(data, appliedDeviceName),
+    [data, appliedDeviceName],
   );
 
-  const filteredRows = useMemo(() => {
-    return demoRows.filter((r) => {
-      const name = String(r.siteName ?? "");
-      if (siteQuery && !name.toLowerCase().includes(siteQuery.toLowerCase()))
-        return false;
-      if (siteValues.length > 0 && !siteValues.includes(name)) return false;
-      return true;
-    });
-  }, [siteQuery, siteValues]);
+  const filteredRows = energyRows;
 
   const csvColumns = useMemo(
     () => leafColumns.map((c) => ({ key: c.key, label: c.label })),
@@ -241,7 +127,18 @@ export default function EnergyConsumption() {
             Energy consumption report
           </span>
           <div className="flex items-center gap-2">
-            <Popover>
+            <Popover
+              open={filterOpen}
+              onOpenChange={(open) => {
+                setFilterOpen(open);
+                if (open) {
+                  setDate(appliedDate ? { ...appliedDate } : defaultDateRange());
+                  setDraftDeviceId(appliedDeviceId);
+                  setDraftDeviceName(appliedDeviceName);
+                  setDeviceSearchInput(appliedDeviceName ?? "");
+                }
+              }}
+            >
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
@@ -253,45 +150,108 @@ export default function EnergyConsumption() {
                   Filter
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-72 p-4" align="end" sideOffset={8}>
-                <div className="space-y-4">
-                  <div className="text-sm font-semibold text-foreground">
+              <PopoverContent
+                className="w-72 gap-0 p-3"
+                align="end"
+                sideOffset={8}
+              >
+                <div className="flex flex-col gap-2">
+                  <div className="text-sm font-semibold leading-none text-foreground">
                     Filter Options
                   </div>
-                  <div className="space-y-5">
-                    <div className="space-y-2">
-                      <Label>Site Name</Label>
-                      <Input
-                        placeholder="Enter Site Name"
-                        value={siteQuery}
-                        onChange={(e) => setSiteQuery(e.target.value)}
+
+                  <div className="space-y-1.5">
+                    <Label className="text-sm" htmlFor="energy-device-combobox">
+                      Site Name
+                    </Label>
+                    <Combobox
+                      filter={null}
+                      items={deviceList}
+                      value={draftSelectedDevice}
+                      itemToStringLabel={(d) => d.name}
+                      itemToStringValue={(d) => String(d.rms_device_id)}
+                      isItemEqualToValue={(a, b) =>
+                        a.rms_device_id === b.rms_device_id
+                      }
+                      inputValue={deviceSearchInput}
+                      onInputValueChange={(v) => setDeviceSearchInput(v)}
+                      onValueChange={(d) => {
+                        if (d == null) {
+                          setDraftDeviceId(undefined);
+                          setDraftDeviceName(undefined);
+                          setDeviceSearchInput("");
+                          return;
+                        }
+                        setDraftDeviceId(String(d.rms_device_id));
+                        setDraftDeviceName(d.name);
+                        setDeviceSearchInput(d.name);
+                      }}
+                    >
+                      <ComboboxInput
+                        id="energy-device-combobox"
+                        placeholder="Search and select device"
+                        showClear
+                        className="h-9 w-full min-w-0 text-sm"
                       />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Date Range</Label>
-                      <DatePickerWithRange date={date} setDate={setDate} />
-                    </div>
-                    <MultiSelectFilterDropdown
-                      label="Site List"
-                      placeholder="Select sites"
-                      options={siteOptions}
-                      values={siteValues}
-                      onChange={setSiteValues}
-                    />
+                      <ComboboxContent className="w-full">
+                        {deviceSearchLoading ? (
+                          <div className="flex items-center justify-center gap-2 py-3 text-xs text-muted-foreground">
+                            <Spinner className="size-3.5" />
+                            Loading…
+                          </div>
+                        ) : (
+                          <>
+                            <ComboboxEmpty>
+                              {debouncedDeviceName.trim().length >= 1
+                                ? "No devices found."
+                                : "Type to search devices."}
+                            </ComboboxEmpty>
+                            <ComboboxList>
+                              {(device: Device) => (
+                                <ComboboxItem
+                                  key={device.rms_device_id}
+                                  value={device}
+                                >
+                                  {device.name}
+                                </ComboboxItem>
+                              )}
+                            </ComboboxList>
+                          </>
+                        )}
+                      </ComboboxContent>
+                    </Combobox>
                   </div>
-                  <div className="flex justify-end gap-2 pt-2">
+
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">Date Range</Label>
+                    <DatePickerWithRange date={date} setDate={setDate} />
+                  </div>
+
+                  <div className="flex justify-end gap-2 border-t border-border/70 pt-2.5">
                     <Button
                       variant="outline"
-                      size="sm"
-                      className="h-7 px-3 text-xs"
+                      className="h-9 px-3 text-sm"
+                      type="button"
                       onClick={() => {
-                        setSiteQuery("");
-                        setSiteValues([]);
+                        const next = defaultDateRange();
+                        setDate(next);
+                        setDraftDeviceId(undefined);
+                        setDraftDeviceName(undefined);
+                        setDeviceSearchInput("");
                       }}
                     >
                       Reset
                     </Button>
-                    <Button size="sm" className="h-7 px-3 text-xs">
+                    <Button
+                      className="h-9 px-3 text-sm"
+                      type="button"
+                      onClick={() => {
+                        setAppliedDate(date ? { ...date } : defaultDateRange());
+                        setAppliedDeviceId(draftDeviceId);
+                        setAppliedDeviceName(draftDeviceName);
+                        setFilterOpen(false);
+                      }}
+                    >
                       Apply
                     </Button>
                   </div>
@@ -601,7 +561,7 @@ export default function EnergyConsumption() {
                         }
                         style={{ whiteSpace: "nowrap" }}
                       >
-                        {String(row[col.key] ?? "-")}
+                        {toCellDisplay(row[col.key])}
                       </TableCell>
                     ))}
                   </TableRow>

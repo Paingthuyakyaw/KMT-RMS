@@ -1,9 +1,15 @@
 import { axios } from "@/store/api";
 import { useQuery } from "@tanstack/react-query";
-import type { logProps } from "./typed";
+import type { logProps, tweResponse } from "./typed";
 
 export interface LogQueryPayload {
   rms_device_id?: string;
+  from_date?: string;
+  to_date?: string;
+}
+
+export interface twePayload {
+  device_id?: string;
   from_date?: string;
   to_date?: string;
 }
@@ -78,6 +84,46 @@ export const useLog = (
     queryFn: () => log(payload),
     enabled: Boolean(
       payload?.rms_device_id?.trim() &&
+        payload?.from_date &&
+        payload?.to_date,
+    ),
+  });
+};
+
+
+export const twelLog = async (
+  payload: twePayload,
+): Promise<tweResponse> => {
+
+  const formData = new FormData();
+  if (
+    payload.device_id != null &&
+    String(payload.device_id).trim() !== ""
+  ) {
+    formData.append("device_id", String(payload.device_id).trim());
+  }
+  if (payload.from_date) formData.append("from_date", payload.from_date);
+  if (payload.to_date) formData.append("to_date", payload.to_date);
+
+  const { data: raw } = await axios.post(`api/v2/12am/logs`, formData, {
+   
+  });
+
+  return normalizeLogList(raw) as logProps[];
+};
+
+export const useTweLog = (
+  payload: twePayload,
+  pagination?: LogPagination,
+) => {
+  const page = pagination?.page ?? 1;
+  const limit = pagination?.limit ?? 30;
+
+  return useQuery({
+    queryKey: ["log", payload, page, limit],
+    queryFn: () => twelLog(payload),
+    enabled: Boolean(
+      payload?.device_id?.trim() &&
         payload?.from_date &&
         payload?.to_date,
     ),
