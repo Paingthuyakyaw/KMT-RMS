@@ -106,8 +106,8 @@ export default function EnergyConsumption() {
   }, [timeZoneId]);
 
   const energyRows = useMemo(
-    () => buildEnergyRows(data, appliedDeviceName),
-    [data, appliedDeviceName],
+    () => buildEnergyRows(data, appliedDeviceName, timeZoneId),
+    [data, appliedDeviceName, timeZoneId],
   );
 
   const filteredRows = energyRows;

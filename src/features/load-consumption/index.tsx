@@ -39,6 +39,7 @@ import useDebounce from "@/hooks/use-debounce";
 import { useDeviceListSearch } from "@/store/server/device/query";
 import type { Device } from "@/store/server/dashboard/typed";
 import { Spinner } from "@/components/ui/spinner";
+import { formatTimestampInTz, getFormatDate } from "@/lib/get-format-date";
 
 const leafColumns = [
   { key: "siteName", label: "Site Name" },
@@ -102,39 +103,97 @@ const round2OrDash = (value: unknown): number | "-" => {
   return Math.round(n * 100) / 100;
 };
 
-const parseTimelineValues = (value: unknown): number[] => {
-  if (typeof value === "number" && Number.isFinite(value)) return [value];
-  if (typeof value !== "string") return [];
-  const trimmed = value.trim();
-  if (!trimmed) return [];
-  try {
-    const parsed = JSON.parse(trimmed);
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-      return Object.values(parsed as Record<string, unknown>)
-        .map((v) => Number(v))
-        .filter((n) => Number.isFinite(n));
-    }
-  } catch {
-    const asNumber = Number(trimmed);
-    return Number.isFinite(asNumber) ? [asNumber] : [];
-  }
-  return [];
-};
-
-const startEndFromTimeline = (
+/** Tenant kWh JSON: keys are epoch seconds, values are meter readings — sort by key. */
+const startEndFromTenantKwhJson = (
   value: unknown,
 ): { start: number | "-"; end: number | "-" } => {
-  const values = parseTimelineValues(value);
-  if (!values.length) return { start: "-", end: "-" };
-  return {
-    start: round2OrDash(values[0]),
-    end: round2OrDash(values[values.length - 1]),
-  };
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const v = round2OrDash(value);
+    return { start: v, end: v };
+  }
+  if (typeof value !== "string") return { start: "-", end: "-" };
+  const trimmed = value.trim();
+  if (!trimmed) return { start: "-", end: "-" };
+  try {
+    const parsed = JSON.parse(trimmed) as unknown;
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      const entries = Object.entries(parsed as Record<string, unknown>)
+        .map(([k, val]) => ({ k: Number(k), v: Number(val) }))
+        .filter((x) => Number.isFinite(x.k) && Number.isFinite(x.v));
+      if (!entries.length) return { start: "-", end: "-" };
+      entries.sort((a, b) => a.k - b.k);
+      return {
+        start: round2OrDash(entries[0]!.v),
+        end: round2OrDash(entries[entries.length - 1]!.v),
+      };
+    }
+  } catch {
+    const n = Number(trimmed);
+    if (Number.isFinite(n)) {
+      const v = round2OrDash(n);
+      return { start: v, end: v };
+    }
+  }
+  return { start: "-", end: "-" };
 };
 
-const diffFromStartEnd = (start: number | "-", end: number | "-"): number | "-" => {
+const scalarMetric = (value: unknown): number | "-" => {
+  if (value == null) return "-";
+  if (typeof value === "number") return round2OrDash(value);
+  const s = String(value).trim();
+  if (!s) return "-";
+  if (
+    (s.startsWith("{") && s.endsWith("}")) ||
+    (s.startsWith("[") && s.endsWith("]"))
+  ) {
+    try {
+      const parsed = JSON.parse(s) as unknown;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        const vals = Object.values(parsed as Record<string, unknown>)
+          .map((x) => Number(x))
+          .filter((n) => Number.isFinite(n));
+        if (vals.length) return round2OrDash(vals[vals.length - 1]!);
+      }
+    } catch {
+      // fall through
+    }
+  }
+  const n = Number(s);
+  return Number.isFinite(n) ? round2OrDash(n) : "-";
+};
+
+function pickPrimaryTenantKwhJson(row: any): string {
+  const keys = [
+    "tenant_2_kwh",
+    "tenant_1_kwh",
+    "tenant_3_kwh",
+    "tenant_4_kwh",
+  ] as const;
+  for (const k of keys) {
+    const v = row?.[k];
+    const t = v != null ? String(v).trim() : "";
+    if (t && t !== "{}" && t !== " ") return t;
+  }
+  return "";
+}
+
+function pickMergedMetric(
+  a: string | number | "-",
+  b: string | number | "-",
+): string | number | "-" {
+  if (b !== "-") return b;
+  return a;
+}
+
+const diffFromStartEnd = (
+  start: string | number | "-",
+  end: string | number | "-",
+): number | "-" => {
   if (start === "-" || end === "-") return "-";
-  return round2OrDash(Number(end) - Number(start));
+  const a = Number(start);
+  const b = Number(end);
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return "-";
+  return round2OrDash(b - a);
 };
 
 const toDateMs = (value: unknown): number | null => {
@@ -161,11 +220,19 @@ const pickNumber = (...values: unknown[]): number | "-" => {
 const rowCreateDate = (row: any): string =>
   String(row?.create_date_mmtz ?? row?.create_date ?? "");
 
-const mapApiRowToLoadRow = (row: any): LoadRow => {
-  const t1 = startEndFromTimeline(row?.tenant_1_kwh);
-  const t2 = startEndFromTimeline(row?.tenant_2_kwh);
-  const t3 = startEndFromTimeline(row?.tenant_3_kwh);
-  const t4 = startEndFromTimeline(row?.tenant_4_kwh);
+const mapApiRowToLoadRow = (row: any, timeZoneId: string): LoadRow => {
+  const t1 = startEndFromTenantKwhJson(row?.tenant_1_kwh);
+  const t2 = startEndFromTenantKwhJson(row?.tenant_2_kwh);
+  const t3 = startEndFromTenantKwhJson(row?.tenant_3_kwh);
+  const t4 = startEndFromTenantKwhJson(row?.tenant_4_kwh);
+  const lastFallback = row?.last_updated_at ?? row?.last_time ?? "";
+  const endFromJson = getFormatDate(
+    row?.tenant_1_kwh,
+    row?.tenant_2_kwh,
+    lastFallback,
+    timeZoneId,
+  );
+  const startRaw = row?.create_date_mmtz ?? row?.create_date ?? "";
   return {
     siteName:
       row?.rms_name_label ??
@@ -173,8 +240,11 @@ const mapApiRowToLoadRow = (row: any): LoadRow => {
       row?.site_name ??
       row?.device_name ??
       String(row?.device_id ?? "-"),
-    startTime: row?.create_date_mmtz ?? row?.create_date ?? "-",
-    endTime: row?.last_updated_at ?? row?.last_time ?? "-",
+    startTime: formatTimestampInTz(startRaw, timeZoneId) || "-",
+    endTime:
+      endFromJson ||
+      formatTimestampInTz(lastFallback, timeZoneId) ||
+      "-",
     periodDays: row?.period_days ?? row?.period ?? "-",
     t1Start: t1.start,
     t1End: t1.end,
@@ -188,15 +258,15 @@ const mapApiRowToLoadRow = (row: any): LoadRow => {
     t4Start: t4.start,
     t4End: t4.end,
     t4KwhPerDay: diffFromStartEnd(t4.start, t4.end),
-    avgLoadWT1: round2OrDash(row?.tenant_1_w),
-    avgLoadWT2: round2OrDash(row?.tenant_2_w),
-    avgLoadWT3: round2OrDash(row?.tenant_3_w),
-    avgLoadWT4: round2OrDash(row?.tenant_4_w),
-    avgLoadAT1: round2OrDash(row?.tenant_1_a_value ?? row?.tenant_1_a),
-    avgLoadAT2: round2OrDash(row?.tenant_2_a),
-    avgLoadAT3: round2OrDash(row?.tenant_3_a),
-    avgLoadAT4: round2OrDash(row?.tenant_4_a),
-    avgBatteryVoltage: round2OrDash(row?.batt_voltage_v),
+    avgLoadWT1: scalarMetric(row?.tenant_1_w),
+    avgLoadWT2: scalarMetric(row?.tenant_2_w),
+    avgLoadWT3: scalarMetric(row?.tenant_3_w),
+    avgLoadWT4: scalarMetric(row?.tenant_4_w),
+    avgLoadAT1: scalarMetric(row?.tenant_1_a_value ?? row?.tenant_1_a),
+    avgLoadAT2: scalarMetric(row?.tenant_2_a),
+    avgLoadAT3: scalarMetric(row?.tenant_3_a),
+    avgLoadAT4: scalarMetric(row?.tenant_4_a),
+    avgBatteryVoltage: scalarMetric(row?.batt_voltage_v),
   };
 };
 
@@ -205,7 +275,11 @@ const toCellDisplay = (value: unknown): string => {
   return String(value);
 };
 
-const buildLoadRows = (data: unknown, appliedDeviceName?: string): LoadRow[] => {
+const buildLoadRows = (
+  data: unknown,
+  appliedDeviceName: string | undefined,
+  timeZoneId: string,
+): LoadRow[] => {
   if (!Array.isArray(data)) return [];
   const sorted = [...data].sort((a: any, b: any) =>
     rowCreateDate(a).localeCompare(rowCreateDate(b)),
@@ -213,60 +287,74 @@ const buildLoadRows = (data: unknown, appliedDeviceName?: string): LoadRow[] => 
   if (sorted.length >= 2) {
     const firstRaw = sorted[0];
     const secondRaw = sorted[1];
-    const first = mapApiRowToLoadRow(firstRaw);
-    const second = mapApiRowToLoadRow(secondRaw);
+    const first = mapApiRowToLoadRow(firstRaw, timeZoneId);
+    const second = mapApiRowToLoadRow(secondRaw, timeZoneId);
+    const mergedEndTime = getFormatDate(
+      pickPrimaryTenantKwhJson(firstRaw),
+      pickPrimaryTenantKwhJson(secondRaw),
+      secondRaw?.last_updated_at ?? secondRaw?.last_time,
+      timeZoneId,
+    );
+    const startRaw = rowCreateDate(firstRaw);
+    const endRaw = rowCreateDate(secondRaw);
     return [
       {
         ...second,
         siteName: appliedDeviceName?.trim() || second.siteName,
-        startTime: rowCreateDate(firstRaw) || "-",
-        endTime: rowCreateDate(secondRaw) || "-",
-        periodDays: computePeriodDays(rowCreateDate(firstRaw), rowCreateDate(secondRaw)),
+        startTime: formatTimestampInTz(startRaw, timeZoneId) || "-",
+        endTime:
+          mergedEndTime ||
+          formatTimestampInTz(
+            secondRaw?.last_updated_at ?? secondRaw?.last_time,
+            timeZoneId,
+          ) ||
+          "-",
+        periodDays: computePeriodDays(startRaw, endRaw),
         t1Start: first.t1Start,
         t1End: second.t1End,
         t1KwhPerDay: pickNumber(
-          diffFromStartEnd(
-            Number(first.t1Start) as number | "-",
-            Number(second.t1End) as number | "-",
-          ),
+          diffFromStartEnd(first.t1Start, second.t1End),
           second.t1KwhPerDay,
           first.t1KwhPerDay,
         ),
         t2Start: first.t2Start,
         t2End: second.t2End,
         t2KwhPerDay: pickNumber(
-          diffFromStartEnd(
-            Number(first.t2Start) as number | "-",
-            Number(second.t2End) as number | "-",
-          ),
+          diffFromStartEnd(first.t2Start, second.t2End),
           second.t2KwhPerDay,
           first.t2KwhPerDay,
         ),
         t3Start: first.t3Start,
         t3End: second.t3End,
         t3KwhPerDay: pickNumber(
-          diffFromStartEnd(
-            Number(first.t3Start) as number | "-",
-            Number(second.t3End) as number | "-",
-          ),
+          diffFromStartEnd(first.t3Start, second.t3End),
           second.t3KwhPerDay,
           first.t3KwhPerDay,
         ),
         t4Start: first.t4Start,
         t4End: second.t4End,
         t4KwhPerDay: pickNumber(
-          diffFromStartEnd(
-            Number(first.t4Start) as number | "-",
-            Number(second.t4End) as number | "-",
-          ),
+          diffFromStartEnd(first.t4Start, second.t4End),
           second.t4KwhPerDay,
           first.t4KwhPerDay,
+        ),
+        avgLoadWT1: pickMergedMetric(first.avgLoadWT1, second.avgLoadWT1),
+        avgLoadWT2: pickMergedMetric(first.avgLoadWT2, second.avgLoadWT2),
+        avgLoadWT3: pickMergedMetric(first.avgLoadWT3, second.avgLoadWT3),
+        avgLoadWT4: pickMergedMetric(first.avgLoadWT4, second.avgLoadWT4),
+        avgLoadAT1: pickMergedMetric(first.avgLoadAT1, second.avgLoadAT1),
+        avgLoadAT2: pickMergedMetric(first.avgLoadAT2, second.avgLoadAT2),
+        avgLoadAT3: pickMergedMetric(first.avgLoadAT3, second.avgLoadAT3),
+        avgLoadAT4: pickMergedMetric(first.avgLoadAT4, second.avgLoadAT4),
+        avgBatteryVoltage: pickMergedMetric(
+          first.avgBatteryVoltage,
+          second.avgBatteryVoltage,
         ),
       },
     ];
   }
   return sorted.map((item) => {
-    const mapped = mapApiRowToLoadRow(item);
+    const mapped = mapApiRowToLoadRow(item, timeZoneId);
     return { ...mapped, siteName: appliedDeviceName?.trim() || mapped.siteName };
   });
 };
@@ -316,8 +404,8 @@ export default function LoadConsumption() {
   }, [timeZoneId]);
 
   const filteredRows = useMemo(
-    () => buildLoadRows(data, appliedDeviceName),
-    [data, appliedDeviceName],
+    () => buildLoadRows(data, appliedDeviceName, timeZoneId),
+    [data, appliedDeviceName, timeZoneId],
   );
   const csvColumns = useMemo(
     () => leafColumns.map((c) => ({ key: c.key, label: c.label })),

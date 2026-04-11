@@ -35,6 +35,10 @@ import type { logProps } from "@/store/server/log/typed";
 import type { Device } from "@/store/server/dashboard/typed";
 import { Spinner } from "@/components/ui/spinner";
 import { scrollWindowToBottom } from "@/lib/utils";
+import {
+  getFormatDate,
+  latestScalarFromJsonTimeline,
+} from "@/lib/get-format-date";
 
 const extractScalar = (v: unknown): string | number | null => {
   if (v === null || v === undefined) return null;
@@ -66,6 +70,13 @@ const extractScalar = (v: unknown): string | number | null => {
 const toCell = (v: unknown): string | number => {
   const s = extractScalar(v);
   return s === null ? "-" : s;
+};
+
+/** JSON timeline `{"epoch": value}` → latest value; else `toCell`. */
+const toCellFromJsonTimeline = (v: unknown): string | number => {
+  const t = latestScalarFromJsonTimeline(v);
+  if (t != null) return t;
+  return toCell(v);
 };
 
 function normalizeRmsId(raw?: string): string | undefined {
@@ -193,15 +204,23 @@ export function LogComponent({
         deviceName: String(
           extractScalar( appliedDeviceName ),
         ),
-        lastUpdatedAt: String(
-          extractScalar(log.last_updated_at ?? log.last_time) ?? "-",
-        ),
+        lastUpdatedAt: (() => {
+          const formatted = getFormatDate(
+            log.genset_l1_v,
+            log.batt_voltage_v,
+            log.last_time,
+            timeZoneId,
+          );
+          if (formatted !== "") return formatted;
+          const fb = extractScalar(log.last_updated_at ?? log.last_time);
+          return fb == null ? "-" : String(fb);
+        })(),
         sourceModel: String(""),
         powerSource: String(
            "",
         ),
         roomTemp: toCell(log.room_temp),
-        battVoltageV: toCell(log.batt_voltage_v),
+        battVoltageV: toCellFromJsonTimeline(log.batt_voltage_v),
         battCurrentA: toCell(log.batt_current_a),
         socPercent: toCell(log.soc),
         rectifierCurrent: toCell(log.rectifier_current),
@@ -226,7 +245,7 @@ export function LogComponent({
         gensetKwh: toCell(log.gunset_kwh),
         mode: toCell(log.mode ?? log.auto_mode),
 
-        gensetL1V: toCell(log.genset_l1_v),
+        gensetL1V: toCellFromJsonTimeline(log.genset_l1_v),
         gensetL2V: toCell(log.genset_l2_v),
         gensetL3V: toCell(log.genset_l3_v),
         gensetL1A: toCell(log.genset_l1_a),
@@ -274,7 +293,7 @@ export function LogComponent({
         totalLoadEnergyKwh: toCell(log.total_load_energy),
       }
     })
-  }, [apiLogs, appliedDeviceName])
+  }, [apiLogs, appliedDeviceName, timeZoneId])
 
   return (
     <div className="h-screen">

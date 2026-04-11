@@ -1,3 +1,4 @@
+import { formatTimestampInTz } from "@/lib/get-format-date";
 import type { Device } from "@/store/server/dashboard/typed";
 import type { EnergyRow } from "./types";
 
@@ -96,7 +97,7 @@ const pickNumber = (...values: Array<unknown>): number | "-" => {
   return "-";
 };
 
-const mapApiRowToEnergyRow = (row: any): EnergyRow => {
+const mapApiRowToEnergyRow = (row: any, timeZoneId: string): EnergyRow => {
   const dgRh = startEndFromTimeline(row?.dgrh);
   const gridRhPerDay = round2OrDash(row?.grid_run_time_hrs);
   const batteryRhPerDay = round2OrDash(row?.batt_run_time_hrs);
@@ -126,8 +127,12 @@ const mapApiRowToEnergyRow = (row: any): EnergyRow => {
       row?.site_name ??
       row?.device_name ??
       String(row?.device_id ?? "-"),
-    startTime: row?.create_date_mmtz ?? row?.create_date ?? "-",
-    endTime: row?.last_updated_at ?? row?.last_time ?? "-",
+    startTime:
+      formatTimestampInTz(row?.create_date_mmtz ?? row?.create_date, timeZoneId) ||
+      "-",
+    endTime:
+      formatTimestampInTz(row?.last_updated_at ?? row?.last_time, timeZoneId) ||
+      "-",
     periodDays: row?.period_days ?? row?.period ?? "-",
     dgRunStart: dgRh.start,
     dgRunEnd: dgRh.end,
@@ -167,7 +172,11 @@ const mapApiRowToEnergyRow = (row: any): EnergyRow => {
 const rowCreateDate = (row: any): string =>
   String(row?.create_date_mmtz ?? row?.create_date ?? "");
 
-export function buildEnergyRows(data: unknown, appliedDeviceName?: string): EnergyRow[] {
+export function buildEnergyRows(
+  data: unknown,
+  appliedDeviceName: string | undefined,
+  timeZoneId: string,
+): EnergyRow[] {
   if (!Array.isArray(data)) return [];
   const sorted = [...data].sort((a: any, b: any) =>
     rowCreateDate(a).localeCompare(rowCreateDate(b)),
@@ -176,8 +185,8 @@ export function buildEnergyRows(data: unknown, appliedDeviceName?: string): Ener
   if (sorted.length >= 2) {
     const firstRaw = sorted[0];
     const secondRaw = sorted[1];
-    const first = mapApiRowToEnergyRow(firstRaw);
-    const second = mapApiRowToEnergyRow(secondRaw);
+    const first = mapApiRowToEnergyRow(firstRaw, timeZoneId);
+    const second = mapApiRowToEnergyRow(secondRaw, timeZoneId);
     const dgRhPerDay = pickNumber(
       diffFromStartEnd(
         toNumberOrDashFromValue(first.dgRunStart),
@@ -215,8 +224,16 @@ export function buildEnergyRows(data: unknown, appliedDeviceName?: string): Ener
       {
         ...second,
         siteName: appliedDeviceName?.trim() || second.siteName,
-        startTime: rowCreateDate(firstRaw) || "-",
-        endTime: rowCreateDate(secondRaw) || "-",
+        startTime:
+          formatTimestampInTz(
+            firstRaw?.create_date_mmtz ?? firstRaw?.create_date,
+            timeZoneId,
+          ) || "-",
+        endTime:
+          formatTimestampInTz(
+            secondRaw?.create_date_mmtz ?? secondRaw?.create_date,
+            timeZoneId,
+          ) || "-",
         periodDays: computePeriodDays(rowCreateDate(firstRaw), rowCreateDate(secondRaw)),
         dgRunStart: first.dgRunStart,
         dgRunEnd: second.dgRunEnd,
@@ -275,7 +292,7 @@ export function buildEnergyRows(data: unknown, appliedDeviceName?: string): Ener
   }
 
   return sorted.map((item) => {
-    const mapped = mapApiRowToEnergyRow(item);
+    const mapped = mapApiRowToEnergyRow(item, timeZoneId);
     return { ...mapped, siteName: appliedDeviceName?.trim() || mapped.siteName };
   });
 }
